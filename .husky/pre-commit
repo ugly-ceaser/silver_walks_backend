@@ -1,1 +1,23 @@
+#!/bin/sh
+
+echo "🔍 Running type check..."
+npm run type-check
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Type check failed. Please fix TypeScript errors before committing."
+  exit 1
+fi
+
+echo "🔨 Building project..."
+npm run build
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ Build failed. Please fix build errors before committing."
+  exit 1
+fi
+
+echo "✅ Type check and build passed!"
+exit 0
 
