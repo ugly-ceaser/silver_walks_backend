@@ -1,35 +1,28 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
+#!/bin/sh
 
-# Protected branch
-protected_branch='main'
+# Get current branch
+current_branch=$(git branch --show-current)
 
-# Get the branch being pushed to
-while read local_ref local_sha remote_ref remote_sha
-do
-  # Extract branch name from remote_ref (e.g., refs/heads/main -> main)
-  branch=$(echo "$remote_ref" | sed 's|refs/heads/||')
+# Check if pushing to main
+if [ "$current_branch" = "main" ]; then
+  echo ""
+  echo "⚠️  WARNING: You are about to push to the main branch!"
+  echo ""
+  printf "Type 'code' to confirm: "
   
-  # Check if pushing to main branch
-  if [ "$branch" = "$protected_branch" ]; then
+  # Read from terminal
+  exec < /dev/tty
+  read answer
+  
+  if [ "$answer" != "2323" ]; then
     echo ""
-    echo "⚠️  WARNING: You are about to push to the $protected_branch branch!"
-    echo ""
-    echo "To confirm this push, please enter the security code:"
-    read -r -p "Enter code: " code
-    
-    if [ "$code" != "2323" ]; then
-      echo ""
-      echo "❌ Invalid code. Push to $protected_branch branch has been blocked."
-      echo ""
-      exit 1
-    fi
-    
-    echo ""
-    echo "✅ Code verified. Proceeding with push to $protected_branch..."
-    echo ""
+    echo "❌ Push cancelled."
+    exit 1
   fi
-done
+  
+  echo ""
+  echo "✅ Proceeding with push to main..."
+fi
 
 exit 0
 
