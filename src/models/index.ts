@@ -15,6 +15,7 @@ import WithdrawalRequest from './WithdrawalRequest.model';
 import Subscription from './Subscription.model';
 import Payment from './Payment.model';
 import AdminAction from './AdminAction.model';
+import ActivityTracker from './ActivityTracker.model';
 
 // Define associations
 
@@ -312,6 +313,17 @@ AdminAction.belongsTo(User, {
   as: 'targetUser',
 });
 
+// ActivityTracker associations
+ActivityTracker.belongsTo(User, {
+  foreignKey: 'user_id',
+  as: 'user',
+});
+
+User.hasMany(ActivityTracker, {
+  foreignKey: 'user_id',
+  as: 'activityLogs',
+});
+
 export {
   User,
   ElderlyProfile,
@@ -330,6 +342,7 @@ export {
   Subscription,
   Payment,
   AdminAction,
+  ActivityTracker,
 };
 
 export default {

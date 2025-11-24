@@ -1,5 +1,29 @@
 {
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/compression": "^1.8.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "@types/helmet": "^0.0.48",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.0.0",
+    "@types/nodemailer": "^6.4.14",
     "@types/node": "^24.10.1"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.3",
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^1.41.0",
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "nodemailer": "^6.9.8",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.7"
   }
 }
