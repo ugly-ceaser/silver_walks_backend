@@ -53,6 +53,18 @@ const createApp = async (): Promise<Application> => {
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
   app.use(responseInterceptor);
   app.use(requestLogger);
+  
+  // Health check endpoint
+  app.get('/', (req, res) => {
+    res.json({ 
+      success: true, 
+      message: 'Silver Walks API is running',
+      version: config.apiVersion,
+      environment: config.env,
+      timestamp: new Date().toISOString()
+    });
+  });
+  
   app.use('/api', apiRateLimiter);
   app.use(`/api/${config.apiVersion}`, routes);
   app.use(notFoundHandler);
