@@ -12,6 +12,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
     "@types/helmet": "^0.0.48",
+    "@types/joi": "^17.2.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",

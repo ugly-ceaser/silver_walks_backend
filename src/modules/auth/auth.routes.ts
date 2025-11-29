@@ -1,12 +1,12 @@
 import { Router } from 'express';
-import { registerElderlyUser } from './auth.controller';
+import { loginElderlyUser, registerElderlyUser } from './auth.controller';
 import { authRateLimiter } from '../../middlewares/rateLimit.middleware';
 
-import { validateElderlyRegistration } from './auth.schemaValidator';
+import { validateElderlyRegistration, validateElderlyLogin } from './auth.schemaValidator';
 
 const auth = Router();
 
 // Elderly registration route
 auth.post('/register-elderly', authRateLimiter, validateElderlyRegistration, registerElderlyUser);
-
+auth.post('/login-elderly', authRateLimiter, validateElderlyLogin, loginElderlyUser);
 export default auth;

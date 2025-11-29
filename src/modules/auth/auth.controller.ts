@@ -46,4 +46,13 @@ export const registerElderlyUser = async (req: Request, res: Response, next: Nex
   }
 };
 
-
+// Login Elderly User
+export const loginElderlyUser = async (req: Request, res: Response, next: NextFunction) => {
+  const { identifier, password } = req.body;
+  try {
+    const result = await authService.loginElderlyUser(identifier, password);
+    return createdResponse(res, result, 'Elderly user logged in successfully.');
+  } catch (error) {
+    return next(error);
+  }
+};

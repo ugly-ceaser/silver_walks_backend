@@ -2,6 +2,18 @@ import Joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import { validationErrorResponse } from '../../utils/response.util';
 
+// sanitizers (place near top of file)
+const stripHtmlAndControlChars = (value: string) => {
+  // remove HTML tags and non-printable/control characters
+  return value.replace(/<[^>]*>?/gm, '').replace(/[\x00-\x1F\x7F]/g, '').trim();
+};
+
+const sanitize = (value: string, helpers: any) => {
+  if (typeof value !== 'string') return value;
+  const cleaned = stripHtmlAndControlChars(value);
+  return cleaned;
+};
+
 /**
  * Schema for elderly user registration
  */
@@ -49,7 +61,23 @@ export const registerElderlySchema = Joi.object({
     .messages({
       'string.email': 'Invalid email format',
     }),
-
+  password: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .min(8)
+    .max(128)
+    .trim()
+    .pattern(/(?=.*[a-z])/, 'lowercase')
+    .pattern(/(?=.*[A-Z])/, 'uppercase')
+    .pattern(/(?=.*\d)/, 'number')
+    .pattern(/(?=.*[^\w\s])/, 'special')
+    .messages({
+      'string.empty': 'Password is required',
+      'string.min': 'Password must be at least 8 characters long',
+      'string.max': 'Password must not exceed 128 characters',
+      'string.pattern.name':
+        'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+    })
+    .required(),
   homeAddress: Joi.string()
     .trim()
     .min(10)
@@ -136,6 +164,61 @@ export const registerElderlySchema = Joi.object({
     }),
 });
 
+
+/**
+ * Login schema for elderly user
+ * - identifier: email (RFC-like) OR phone (international with country code)
+ * - password: min 8 chars, uppercase, lowercase, number, special char
+ */
+export const loginElderlySchema = Joi.object({
+  identifier: Joi.alternatives()
+    .try(
+      Joi.string()
+        .custom(sanitize, 'sanitize input')
+        .lowercase()
+        .trim()
+        .max(254)
+        .email({ tlds: { allow: false } }) // RFC-like validation via Joi
+        .messages({
+          'string.email': 'Identifier must be a valid email address',
+          'string.max': 'Email must not exceed 254 characters',
+        }),
+
+      Joi.string()
+        .custom(sanitize, 'sanitize input')
+        .trim()
+        .pattern(/^\+?[1-9]\d{1,14}$/) // E.164-ish: + followed by country code and subscriber number
+        .messages({
+          'string.pattern.base':
+            'Identifier must be a valid phone number with country code (e.g., +1234567890)',
+        })
+    )
+    .required()
+    .messages({
+      'any.required': 'Identifier (email or phone) is required',
+      'alternatives.match': 'Identifier must be a valid email or phone number',
+    }),
+
+  password: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .min(8)
+    .max(128)
+    .trim()
+    .pattern(/(?=.*[a-z])/, 'lowercase')
+    .pattern(/(?=.*[A-Z])/, 'uppercase')
+    .pattern(/(?=.*\d)/, 'number')
+    .pattern(/(?=.*[^\w\s])/, 'special')
+    .messages({
+      'string.empty': 'Password is required',
+      'string.min': 'Password must be at least 8 characters long',
+      'string.max': 'Password must not exceed 128 characters',
+      'string.pattern.name':
+        'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+    })
+    .required(),
+});
+
+
 /**
  * Middleware to validate elderly registration data
  */
@@ -160,6 +243,33 @@ export const validateElderlyRegistration = (
   }
 
   // Replace req.body with validated and sanitized data
+  req.body = value;
+  next();
+};
+
+/**
+ * Middleware to validate elderly user login data
+ */
+export const validateElderlyLogin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { error, value } = loginElderlySchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
+      field: detail.path.join('.'),
+      message: detail.message,
+    }));
+
+    validationErrorResponse(res, errors, 'Validation failed');
+    return;
+  }
+
   req.body = value;
   next();
 };
