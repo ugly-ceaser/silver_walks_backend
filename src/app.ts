@@ -92,5 +92,16 @@ export const initializeApp = async (): Promise<void> => {
   }
 };
 
+// Export a singleton app instance for serverless environments
+let appInstance: Application | null = null;
+
+export const getApp = async (): Promise<Application> => {
+  if (!appInstance) {
+    await initializeApp();
+    appInstance = await createApp();
+  }
+  return appInstance;
+};
+
 export default createApp;
 

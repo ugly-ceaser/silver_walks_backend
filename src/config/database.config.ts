@@ -5,15 +5,17 @@ import { runMigrations } from '../migrations';
 
 // Create Sequelize instance
 // Support both DATABASE_URL (for Neon DB) and individual connection parameters
+const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
+
 const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, {
       dialect: 'postgres',
       logging: config.env === 'development' ? (msg: string) => logger.debug(msg) : false,
       pool: {
-        max: 10,
+        max: isServerless ? 2 : 10, // Reduced for serverless
         min: 0,
         acquire: 30000,
-        idle: 10000,
+        idle: isServerless ? 1000 : 10000, // Shorter idle for serverless
       },
       define: {
         timestamps: true,
@@ -37,10 +39,10 @@ const sequelize = process.env.DATABASE_URL
         dialect: 'postgres',
         logging: config.env === 'development' ? (msg: string) => logger.debug(msg) : false,
         pool: {
-          max: 10,
+          max: isServerless ? 2 : 10, // Reduced for serverless
           min: 0,
           acquire: 30000,
-          idle: 10000,
+          idle: isServerless ? 1000 : 10000, // Shorter idle for serverless
         },
         define: {
           timestamps: true,
@@ -67,13 +69,23 @@ export const connectDatabase = async (): Promise<void> => {
     logger.info('Database connection established successfully');
   } catch (error) {
     logger.error('Unable to connect to the database', error as Error);
-    process.exit(1);
+    // In serverless, don't exit the process
+    if (!isServerless) {
+      process.exit(1);
+    }
+    throw error;
   }
 };
 
 // Run database migrations
 export const migrateDatabase = async (): Promise<void> => {
   try {
+    // Skip migrations in serverless environments to speed up cold starts
+    // Run migrations manually or via CI/CD pipeline
+    if (isServerless) {
+      logger.info('Skipping migrations in serverless environment');
+      return;
+    }
     await runMigrations(sequelize);
   } catch (error) {
     logger.error('Database migration failed', error as Error);

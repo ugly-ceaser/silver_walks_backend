@@ -4,7 +4,8 @@
     "dev": "nodemon src/server.ts",
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
-    "build": "tsc"
+    "build": "tsc",
+    "vercel-build": "tsc"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -17,6 +18,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^6.4.14",
+    "@vercel/node": "^5.5.13",
     "husky": "^9.1.7",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
