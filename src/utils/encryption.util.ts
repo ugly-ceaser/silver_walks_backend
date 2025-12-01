@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import bcrypt from 'bcrypt';
+import argon2 from 'argon2';
 import { config } from '../config/env.config';
 
 // Encryption key should be stored in environment variables
@@ -10,17 +10,26 @@ const SALT_LENGTH = 64;
 const TAG_LENGTH = 16;
 
 /**
- * Hash password using bcrypt
+ * Hash password using Argon2
  */
 export const hashPassword = async (password: string): Promise<string> => {
-  return bcrypt.hash(password, config.bcrypt.saltRounds);
+  return argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 65536, // 64 MB
+    timeCost: 3,
+    parallelism: 4,
+  });
 };
 
 /**
  * Compare password with hash
  */
 export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
-  return bcrypt.compare(password, hash);
+  try {
+    return await argon2.verify(hash, password);
+  } catch {
+    return false;
+  }
 };
 
 /**

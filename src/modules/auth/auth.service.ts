@@ -6,6 +6,8 @@ import { sequelize } from "../../config/database.config";
 import { SubscriptionStatus, SubscriptionPlan } from "../../types/subscription.types";
 import { MobilityLevel } from "../../types/mobility.types";
 import { logger } from "../../utils/logger.util";
+import { hashPassword } from "../../utils/encryption.util";
+import crypto from "crypto";
 
 // 🧾 DTO Type
 interface RegisterElderlyUserData {
@@ -56,11 +58,15 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
     gender,
   } = data;
 
+  // Generate temporary password and hash it
+  const tempPassword =  "SilverWalks123"; //crypto.randomBytes(8).toString('hex'); // Generate random temp password
+  const hashedPassword = await hashPassword(tempPassword);
+
   // 1️⃣ Create User
   const user = await User.create(
     {
       email: email || generateFallbackEmail(phone),
-      password_hash: "1111111111", // 🔒 TODO: change via onboarding token
+      password_hash: hashedPassword,
       role: UserRole.ELDERLY,
       is_active: true,
     },
