@@ -16,6 +16,7 @@ import Subscription from './Subscription.model';
 import Payment from './Payment.model';
 import AdminAction from './AdminAction.model';
 import ActivityTracker from './ActivityTracker.model';
+import Otp from './Otp.model';
 
 // Define associations
 
@@ -326,23 +327,24 @@ User.hasMany(ActivityTracker, {
 
 export {
   User,
-  ElderlyProfile,
   NurseProfile,
+  ElderlyProfile,
   HealthProfile,
   EmergencyContact,
   NurseBankAccount,
+  NurseAvailability,
   WalkSession,
+  Payment,
+  WithdrawalRequest,
   Activity,
   ActivityParticipant,
-  ActivityLog,
-  Notification,
-  EmergencyAlert,
-  NurseAvailability,
-  WithdrawalRequest,
   Subscription,
-  Payment,
+  Notification,
   AdminAction,
+  ActivityLog,
   ActivityTracker,
+  EmergencyAlert,
+  Otp
 };
 
 export default {
@@ -362,5 +364,6 @@ export default {
   WithdrawalRequest,
   Subscription,
   Payment,
-  AdminAction,
+  ActivityTracker,
+  Otp,
 };

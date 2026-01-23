@@ -257,3 +257,113 @@ export const validateElderlyLogin = (
   req.body = value;
   next();
 };
+
+/**
+ * Forgot Password Schema
+ */
+export const forgotPasswordSchema = Joi.object({
+  email: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .lowercase()
+    .trim()
+    .email({ tlds: { allow: false } })
+    .required()
+    .messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required',
+    }),
+});
+
+/**
+ * Reset Password Schema
+ */
+export const resetPasswordSchema = Joi.object({
+  email: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .lowercase()
+    .trim()
+    .email({ tlds: { allow: false } })
+    .required()
+    .messages({
+      'string.email': 'Please provide a valid email address',
+      'any.required': 'Email is required',
+    }),
+
+  otp: Joi.string()
+    .trim()
+    .required()
+    .messages({
+      'any.required': 'OTP is required',
+    }),
+
+  newPassword: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .min(8)
+    .max(128)
+    .trim()
+    .pattern(/(?=.*[a-z])/, 'lowercase')
+    .pattern(/(?=.*[A-Z])/, 'uppercase')
+    .pattern(/(?=.*\d)/, 'number')
+    .pattern(/(?=.*[^\w\s])/, 'special')
+    .messages({
+      'string.empty': 'New password is required',
+      'string.min': 'New password must be at least 8 characters long',
+      'string.pattern.name':
+        'New password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+    })
+    .required(),
+});
+
+/**
+ * Middleware to validate forgot password data
+ */
+export const validateForgotPassword = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { error, value } = forgotPasswordSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
+      field: detail.path.join('.'),
+      message: detail.message,
+    }));
+
+    validationErrorResponse(res, errors, 'Validation failed');
+    return;
+  }
+
+  req.body = value;
+  next();
+};
+
+/**
+ * Middleware to validate reset password data
+ */
+export const validateResetPassword = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { error, value } = resetPasswordSchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
+      field: detail.path.join('.'),
+      message: detail.message,
+    }));
+
+    validationErrorResponse(res, errors, 'Validation failed');
+    return;
+  }
+
+  req.body = value;
+  next();
+};

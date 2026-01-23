@@ -16,9 +16,11 @@ interface UserAttributes {
   updated_at: Date;
   last_login_at?: Date;
   is_active: boolean;
+  is_email_verified: boolean;
+  email_verified_at?: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'created_at' | 'updated_at' | 'last_login_at' | 'is_active'> {}
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'created_at' | 'updated_at' | 'last_login_at' | 'is_active' | 'is_email_verified'> { }
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: string;
@@ -29,6 +31,8 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public updated_at!: Date;
   public last_login_at?: Date;
   public is_active!: boolean;
+  public is_email_verified!: boolean;
+  public email_verified_at?: Date;
 }
 
 User.init(
@@ -72,6 +76,15 @@ User.init(
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: true,
+    },
+    is_email_verified: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    email_verified_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
   },
   {

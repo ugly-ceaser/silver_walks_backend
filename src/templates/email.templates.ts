@@ -304,3 +304,35 @@ export const paymentReceiptTemplate = `
   
   <p>If you have any questions about this payment, please contact our support team.</p>
 `;
+
+/**
+ * OTP Email Verification Template
+ */
+export const otpEmailVerificationTemplate = `
+  <h1>Email Verification</h1>
+  <p>Your verification code is:</p>
+  <h2 style="letter-spacing: 5px; background-color: #f4f4f4; padding: 10px; display: inline-block;">{{otpCode}}</h2>
+  <p>This code will expire in {{expirationInMinutes}} minutes.</p>
+`;
+
+/**
+ * OTP Password Reset Template
+ */
+export const otpPasswordResetTemplate = `
+  <h1>Password Reset</h1>
+  <p>You requested to reset your password. Use the code below:</p>
+  <h2 style="letter-spacing: 5px; background-color: #f4f4f4; padding: 10px; display: inline-block;">{{otpCode}}</h2>
+  <p>This code will expire in {{expirationInMinutes}} minutes.</p>
+  <p>If you didn't request this, ignore this email.</p>
+`;
+
+/**
+ * OTP Login Verification Template
+ */
+export const otpLoginVerificationTemplate = `
+  <h1>Login Verification</h1>
+  <p>Your verification code is:</p>
+  <h2 style="letter-spacing: 5px; background-color: #f4f4f4; padding: 10px; display: inline-block;">{{otpCode}}</h2>
+  <p>This code will expire in {{expirationInMinutes}} minutes.</p>
+`;
+

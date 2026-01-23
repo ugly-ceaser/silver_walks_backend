@@ -27,7 +27,7 @@ interface ElderlyProfileAttributes {
   updated_at: Date;
 }
 
-interface ElderlyProfileCreationAttributes extends Optional<ElderlyProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'health_profile_id' | 'assigned_nurse_id' | 'subscription_start_date' | 'subscription_end_date' | 'walks_remaining' | 'walks_used_this_month'> {}
+export interface ElderlyProfileCreationAttributes extends Optional<ElderlyProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'health_profile_id' | 'assigned_nurse_id' | 'subscription_start_date' | 'subscription_end_date' | 'walks_remaining' | 'walks_used_this_month'> { }
 
 class ElderlyProfile extends Model<ElderlyProfileAttributes, ElderlyProfileCreationAttributes> implements ElderlyProfileAttributes {
   public id!: string;

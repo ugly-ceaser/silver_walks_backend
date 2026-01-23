@@ -12,7 +12,7 @@ export enum WalkSessionStatus {
   REJECTED = 'rejected'
 }
 
-interface WalkSessionAttributes {
+export interface WalkSessionAttributes {
   id: string;
   elderly_id: string;
   nurse_id: string;
@@ -34,7 +34,7 @@ interface WalkSessionAttributes {
   updated_at: Date;
 }
 
-interface WalkSessionCreationAttributes extends Optional<WalkSessionAttributes, 'id' | 'created_at' | 'updated_at' | 'route_data' | 'actual_start_time' | 'actual_end_time' | 'distance_meters' | 'steps_count' | 'calories_burned' | 'points_earned' | 'elderly_feedback' | 'nurse_feedback' | 'cancellation_reason'> {}
+export interface WalkSessionCreationAttributes extends Optional<WalkSessionAttributes, 'id' | 'created_at' | 'updated_at' | 'route_data' | 'actual_start_time' | 'actual_end_time' | 'distance_meters' | 'steps_count' | 'calories_burned' | 'points_earned' | 'elderly_feedback' | 'nurse_feedback' | 'cancellation_reason'> { }
 
 class WalkSession extends Model<WalkSessionAttributes, WalkSessionCreationAttributes> implements WalkSessionAttributes {
   public id!: string;

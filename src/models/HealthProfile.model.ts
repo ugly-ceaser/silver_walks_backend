@@ -19,7 +19,7 @@ interface HealthProfileAttributes {
   updated_at: Date;
 }
 
-interface HealthProfileCreationAttributes extends Optional<HealthProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'emergency_notes' | 'last_checkup_date' | 'medical_conditions' | 'medications' | 'allergies' | 'dietary_restrictions'> {}
+export interface HealthProfileCreationAttributes extends Optional<HealthProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'emergency_notes' | 'last_checkup_date' | 'medical_conditions' | 'medications' | 'allergies' | 'dietary_restrictions'> { }
 
 class HealthProfile extends Model<HealthProfileAttributes, HealthProfileCreationAttributes> implements HealthProfileAttributes {
   public id!: string;

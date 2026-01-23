@@ -14,7 +14,7 @@ interface EmergencyContactAttributes {
   updated_at: Date;
 }
 
-interface EmergencyContactCreationAttributes extends Optional<EmergencyContactAttributes, 'id' | 'created_at' | 'updated_at' | 'is_primary'> {}
+export interface EmergencyContactCreationAttributes extends Optional<EmergencyContactAttributes, 'id' | 'created_at' | 'updated_at' | 'is_primary'> { }
 
 class EmergencyContact extends Model<EmergencyContactAttributes, EmergencyContactCreationAttributes> implements EmergencyContactAttributes {
   public id!: string;

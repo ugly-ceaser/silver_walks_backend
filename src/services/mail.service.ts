@@ -41,9 +41,10 @@ class MailService {
     }
 
     // Add default app info if not provided
-    compiled = compiled.replace(/{{app_name}}/g, data.app_name || 'Silver Walks');
-    compiled = compiled.replace(/{{app_url}}/g, data.app_url || config.cors.origin || 'http://localhost:3000');
-    compiled = compiled.replace(/{{support_email}}/g, data.support_email || 'support@silverwalks.com');
+    compiled = compiled.replace(/{{app_name}}/g, data.app_name ? String(data.app_name) : 'Silver Walks');
+    const appUrl = data.app_url || (Array.isArray(config.cors.origin) ? config.cors.origin[0] : config.cors.origin) || 'http://localhost:3000';
+    compiled = compiled.replace(/{{app_url}}/g, String(appUrl));
+    compiled = compiled.replace(/{{support_email}}/g, data.support_email ? String(data.support_email) : 'support@silverwalks.com');
     compiled = compiled.replace(/{{current_year}}/g, String(new Date().getFullYear()));
 
     return compiled;
