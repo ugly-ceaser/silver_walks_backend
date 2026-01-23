@@ -7,7 +7,7 @@ import { activityTracker } from '../../middlewares/activityTracker.middleware';
 // Cloudinary middleware
 import { uploadToCloudinarySingle, uploadToCloudinaryMultiple } from '../../middlewares/cloudinary.middleware';
 
-// Rate limiting middlewares
+// Rate limiting middlewares code
 import {
   apiRateLimiter,
   authRateLimiter,
