@@ -75,6 +75,7 @@ export const createApp = async (): Promise<Application> => {
 
 /**
  * Initialize application (database connection, etc.)
+ * *****
  */
 export const initializeApp = async (): Promise<void> => {
   try {
