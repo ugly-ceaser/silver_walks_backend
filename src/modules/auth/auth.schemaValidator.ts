@@ -164,7 +164,7 @@ export const loginElderlySchema = Joi.object({
         .max(254)
         .email({ tlds: { allow: false } }) // RFC-like validation via Joi
         .messages({
-          'string.email': 'Identifier must be a valid email address',
+          'string.email': 'Invalid Credentials',
           'string.max': 'Email must not exceed 254 characters',
         }),
 
@@ -174,13 +174,13 @@ export const loginElderlySchema = Joi.object({
         .pattern(/^\+?[1-9]\d{1,14}$/) // E.164-ish: + followed by country code and subscriber number
         .messages({
           'string.pattern.base':
-            'Identifier must be a valid phone number with country code (e.g., +1234567890)',
+            'Invalid Credentials',
         })
     )
     .required()
     .messages({
-      'any.required': 'Identifier (email or phone) is required',
-      'alternatives.match': 'Identifier must be a valid email or phone number',
+      'any.required': 'email or phone number is required',
+      'alternatives.match': 'enter a valid email or phone number',
     }),
 
   password: Joi.string()
@@ -197,7 +197,7 @@ export const loginElderlySchema = Joi.object({
       'string.min': 'Password must be at least 8 characters long',
       'string.max': 'Password must not exceed 128 characters',
       'string.pattern.name':
-        'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+        'Invalid Credentials',
     })
     .required(),
 });
