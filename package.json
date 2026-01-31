@@ -5,7 +5,8 @@
     "start": "node dist/server.js",
     "type-check": "tsc --noEmit",
     "build": "tsc",
-    "vercel-build": "tsc"
+    "vercel-build": "tsc",
+    "db:empty": "ts-node scripts/empty-db.ts"
   },
   "devDependencies": {
     "@types/argon2": "^0.14.1",
