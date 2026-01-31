@@ -21,8 +21,8 @@ interface RegisterElderlyUserData {
   emergencyContactName: string;
   emergencyContactRelationship: string;
   emergencyContactPhone: string;
-  healthConditions?: string[];
-  currentMedications?: string[];
+  healthConditions?: string[] | string;
+  currentMedications?: string[] | string;
   specialNeeds?: string;
   gender: string;
   mobilityLevel?: string;
@@ -149,27 +149,54 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
     t
   );
 
+  // Ensure healthConditions is an array
+  const healthList = Array.isArray(healthConditions) 
+    ? healthConditions 
+    : (healthConditions && typeof healthConditions === 'string' ? healthConditions.split(',').map(c => c.trim()).filter(c => c !== '') : []);
+
+  // Ensure currentMedications is an array
+  const medicationList = Array.isArray(currentMedications) 
+    ? currentMedications 
+    : (currentMedications && typeof currentMedications === 'string' ? currentMedications.split(',').map(m => m.trim()).filter(m => m !== '') : []);
+
+  // Map mobilityLevel string to enum if needed (case-insensitive)
+  let mLevel = MobilityLevel.INDEPENDENT;
+  if (mobilityLevel) {
+    const normalized = mobilityLevel.toUpperCase().trim();
+    if (Object.values(MobilityLevel).includes(normalized as MobilityLevel)) {
+      mLevel = normalized as MobilityLevel;
+    } else if (normalized.includes('INDEPENDENT')) {
+      mLevel = MobilityLevel.INDEPENDENT;
+    } else if (normalized.includes('ASSISTED')) {
+      mLevel = MobilityLevel.ASSISTED;
+    } else if (normalized.includes('WHEELCHAIR')) {
+      mLevel = MobilityLevel.WHEELCHAIR;
+    } else if (normalized.includes('BEDRIDDEN')) {
+      mLevel = MobilityLevel.BEDRIDDEN;
+    }
+  }
+
   //  Health Profile
   await authRepository.createHealthProfile(
     {
       elderly_id: elderlyProfile.id,
-      medical_conditions: healthConditions?.map((c) => ({
+      medical_conditions: healthList.map((c) => ({
         condition: c,
         diagnosedDate: null,
         notes: "",
-      })) || [],
+      })),
 
-      medications: currentMedications?.map((m) => ({
+      medications: medicationList.map((m) => ({
         medication: m,
         dosage: "",
         frequency: "",
         prescribedDate: null,
-      })) || [],
+      })),
 
       allergies: [],
       dietary_restrictions: [],
       emergency_notes: specialNeeds || "",
-      mobility_level: (mobilityLevel as MobilityLevel) || MobilityLevel.INDEPENDENT,
+      mobility_level: mLevel,
     },
     t
   );

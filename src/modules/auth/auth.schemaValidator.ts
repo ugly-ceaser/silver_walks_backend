@@ -64,18 +64,19 @@ export const registerElderlySchema = Joi.object({
 
   homeAddress: Joi.string()
     .trim()
-    .min(10)
+    .min(2)
     .max(500)
     .required()
     .messages({
       'string.empty': 'Home address is required',
-      'string.min': 'Home address must be at least 10 characters',
+      'string.min': 'Home address must be at least 2 characters',
       'string.max': 'Home address must not exceed 500 characters',
       'any.required': 'Home address is required',
     }),
 
   gender: Joi.string()
     .trim()
+    .lowercase()
     .valid('male', 'female', 'other')
     .required()
     .messages({
@@ -120,22 +121,26 @@ export const registerElderlySchema = Joi.object({
     }),
 
   // Step 3: Health Information (Optional)
-  healthConditions: Joi.array()
-    .items(Joi.string().trim().max(200))
-    .max(20)
+  healthConditions: Joi.alternatives()
+    .try(
+      Joi.array().items(Joi.string().trim().max(200)).max(20),
+      Joi.string().trim().max(1000).allow('')
+    )
     .optional()
     .messages({
       'array.max': 'Maximum 20 health conditions allowed',
-      'string.max': 'Each health condition must not exceed 200 characters',
+      'string.max': 'Health conditions must not exceed 1000 characters',
     }),
 
-  currentMedications: Joi.array()
-    .items(Joi.string().trim().max(200))
-    .max(30)
+  currentMedications: Joi.alternatives()
+    .try(
+      Joi.array().items(Joi.string().trim().max(200)).max(30),
+      Joi.string().trim().max(1000).allow('')
+    )
     .optional()
     .messages({
       'array.max': 'Maximum 30 medications allowed',
-      'string.max': 'Each medication must not exceed 200 characters',
+      'string.max': 'Medications must not exceed 1000 characters',
     }),
 
   specialNeeds: Joi.string()
