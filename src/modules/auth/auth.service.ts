@@ -270,6 +270,10 @@ export const loginElderlyUser = async (
   try {
     const { user, elderlyProfile } = await checkElderlyRecordsExist({ identifier, password });
 
+    if (!elderlyProfile) {
+      throw new Error("Elderly profile not found");
+    }
+
     // Generate JWT tokens
     const tokens = generateTokenPair({
       userId: user.id,
