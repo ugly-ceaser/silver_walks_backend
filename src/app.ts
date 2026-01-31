@@ -9,6 +9,8 @@ import { apiRateLimiter } from './middlewares/rateLimit.middleware';
 import { responseInterceptor } from './middlewares/responseInterceptor.middleware';
 import { connectDatabase, migrateDatabase } from './config/database.config';
 import { logger } from './utils/logger.util';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger.config';
 
 // Import models to ensure they're registered before sync
 import './models/index';
@@ -80,6 +82,9 @@ export const createApp = async (): Promise<Application> => {
 
   // API routes
   app.use(`/api/${config.apiVersion}`, routes);
+
+  // Swagger Documentation
+  app.use(`/api/${config.apiVersion}/docs`, swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
   // 404 handler
   app.use(notFoundHandler);

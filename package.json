@@ -19,6 +19,8 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
     "@types/nodemailer": "^6.4.14",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "@vercel/node": "^5.5.13",
     "husky": "^9.1.7",
     "nodemon": "^3.1.11",
@@ -41,6 +43,8 @@
     "multer": "^2.0.2",
     "nodemailer": "^6.9.8",
     "pg": "^8.16.3",
-    "sequelize": "^6.37.7"
+    "sequelize": "^6.37.7",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   }
 }
