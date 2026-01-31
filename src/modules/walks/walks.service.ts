@@ -6,6 +6,8 @@ import { logger } from "../../utils/logger.util";
 import { format, addMinutes, parse, isValid } from "date-fns";
 import { ValidationError, NotFoundError } from "../../utils/error.util";
 import NurseProfile from "../../models/NurseProfile.model";
+import { sequelize } from "../../config/database.config";
+import { Transaction } from "sequelize";
 
 /**
  * Helper: Get start and end of current week (Monday to Sunday)
@@ -252,6 +254,49 @@ export const getWalkStatistics = async (elderlyId: string, period: 'all-time' | 
     }
 };
 /**
+ * Create multiple walk sessions
+ */
+export const createWalkSessions = async (data: {
+    elderlyId: string;
+    scheduledDates: string[];
+    scheduledTime: string;
+    duration: number;
+    matchingMode: 'auto' | 'manual';
+    nurseId?: string;
+}) => {
+    logger.info('Creating multiple walk sessions', data);
+
+    if (!data.scheduledDates || data.scheduledDates.length === 0) {
+        throw new ValidationError('At least one scheduled date is required');
+    }
+
+    const t = await sequelize.transaction();
+
+    try {
+        const sessions = [];
+
+        for (const date of data.scheduledDates) {
+            const session = await createWalkSession({
+                elderlyId: data.elderlyId,
+                scheduledDate: date,
+                scheduledTime: data.scheduledTime,
+                duration: data.duration,
+                matchingMode: data.matchingMode,
+                nurseId: data.nurseId
+            }, t);
+            sessions.push(session);
+        }
+
+        await t.commit();
+        return sessions;
+    } catch (error) {
+        await t.rollback();
+        logger.error('Error creating multiple walk sessions', error as Error);
+        throw error;
+    }
+};
+
+/**
  * Create a new walk session
  */
 export const createWalkSession = async (data: {
@@ -261,8 +306,8 @@ export const createWalkSession = async (data: {
     duration: number;
     matchingMode: 'auto' | 'manual';
     nurseId?: string;
-}) => {
-    logger.info('Creating walk session', data);
+}, transaction?: Transaction) => {
+    logger.info('Creating walk session', { ...data, hasTransaction: !!transaction });
 
     try {
         let finalNurseId = data.nurseId;
@@ -270,7 +315,7 @@ export const createWalkSession = async (data: {
         if (data.matchingMode === 'auto') {
             const matchedNurse = await findMatchingNurse(data.scheduledDate, data.scheduledTime, data.duration, data.elderlyId);
             if (!matchedNurse) {
-                throw new NotFoundError('No nurses available for the selected time slot');
+                throw new NotFoundError(`No nurses available for the selected time slot on ${data.scheduledDate}`);
             }
             finalNurseId = matchedNurse.id;
         } else if (!finalNurseId) {
@@ -290,7 +335,7 @@ export const createWalkSession = async (data: {
             );
 
             if (!isAvailable) {
-                throw new ValidationError('Selected nurse is not available for the chosen time slot');
+                throw new ValidationError(`Selected nurse is not available for the chosen time slot on ${data.scheduledDate}`);
             }
         }
 
@@ -301,11 +346,13 @@ export const createWalkSession = async (data: {
             scheduled_time: data.scheduledTime,
             duration_minutes: data.duration,
             status: WalkSessionStatus.SCHEDULED
-        });
+        }, transaction);
 
         return formatWalkSession(session);
     } catch (error) {
-        logger.error('Error creating walk session', error as Error);
+        if (!transaction) {
+            logger.error('Error creating walk session', error as Error);
+        }
         throw error;
     }
 };

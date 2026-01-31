@@ -127,11 +127,11 @@ export const createWalk = async (req: Request, res: Response, next: NextFunction
 
         const profile = await getElderlyProfileByUserId(userId);
 
-        const { scheduledDate, scheduledTime, duration, matchingMode, nurseId } = req.body;
+        const { scheduledDates, scheduledTime, duration, matchingMode, nurseId } = req.body;
 
-        const session = await walksByService.createWalkSession({
+        const sessions = await walksByService.createWalkSessions({
             elderlyId: profile.id,
-            scheduledDate,
+            scheduledDates,
             scheduledTime,
             duration,
             matchingMode,
@@ -140,7 +140,7 @@ export const createWalk = async (req: Request, res: Response, next: NextFunction
 
         res.status(201).json({
             success: true,
-            data: session
+            data: sessions
         });
     } catch (error) {
         next(error);

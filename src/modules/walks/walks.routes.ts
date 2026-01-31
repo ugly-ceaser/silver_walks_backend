@@ -2,6 +2,8 @@ import { Router } from 'express';
 import * as walksController from './walks.controller';
 import { authenticate } from '../../middlewares/auth.middleware';
 
+import { validateCreateWalk } from './walks.schemaValidator';
+
 const walks = Router();
 
 // All walks routes require authentication
@@ -11,7 +13,7 @@ walks.use(authenticate);
 walks.get('/', walksController.getWalkSessions);
 
 // POST /api/v1/walks - Create a new walk session
-walks.post('/', walksController.createWalk);
+walks.post('/', validateCreateWalk, walksController.createWalk);
 
 // POST /api/v1/walks/match - Find a matching nurse
 walks.post('/match', walksController.matchWalk);
