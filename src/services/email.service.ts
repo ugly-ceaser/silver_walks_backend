@@ -48,7 +48,7 @@ class ConsoleEmailService implements IEmailService {
       text: options.text,
       html: options.html ? '[HTML Content]' : undefined,
     });
-    
+
     if (config.env === 'development') {
       console.log('\n========== EMAIL (CONSOLE) ==========');
       console.log('To:', options.to);
@@ -74,7 +74,7 @@ class NodemailerEmailService implements IEmailService {
 
   constructor() {
     const nodemailer = require('nodemailer');
-    
+
     if (!emailConfig.smtp) {
       throw new AppError(
         'SMTP configuration is missing',
@@ -118,10 +118,13 @@ class NodemailerEmailService implements IEmailService {
         messageId: info.messageId,
         to: options.to,
       });
-    } catch (error) {
-      logger.error('Failed to send email via Nodemailer', error as Error);
+    } catch (error: any) {
+      logger.error('Failed to send email via Nodemailer', error, {
+        code: error.code,
+        command: error.command
+      });
       throw new AppError(
-        'Failed to send email',
+        `Failed to send email: ${error.message}`,
         500,
         ErrorCode.EXTERNAL_SERVICE_ERROR
       );
@@ -142,7 +145,7 @@ class SendGridEmailService implements IEmailService {
 
   constructor() {
     const sgMail = require('@sendgrid/mail');
-    
+
     if (!emailConfig.sendgrid?.apiKey) {
       throw new AppError(
         'SendGrid API key is missing',
@@ -202,7 +205,7 @@ class MailtrapEmailService implements IEmailService {
 
   constructor() {
     const nodemailer = require('nodemailer');
-    
+
     if (!emailConfig.mailtrap) {
       throw new AppError(
         'Mailtrap configuration is missing',
