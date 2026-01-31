@@ -126,7 +126,7 @@ NurseProfile.init(
     },
     address: {
       type: DataTypes.TEXT,
-      allowNull: true,
+      allowNull: false,
     },
     rating: {
       type: DataTypes.DECIMAL(3, 2),
