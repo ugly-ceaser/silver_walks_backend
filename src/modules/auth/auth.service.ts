@@ -257,9 +257,39 @@ const checkElderlyRecordsExist = async (data: CheckElderlyRecords) => {
 export const registerElderlyUser = async (
   data: RegisterElderlyUserData
 ): Promise<RegisterElderlyResult> => {
-  logger.info("Starting elderly user registration", { phone: data.phone });
+  logger.info("Starting elderly user registration", { email: data.email, phone: data.phone });
 
   try {
+    // 1. Check if user already exists
+    const existingUser = await authRepository.findUserByEmail(data.email || generateFallbackEmail(data.phone));
+
+    if (existingUser) {
+      if (!existingUser.is_email_verified) {
+        logger.info("User exists but is unverified. Resending OTP.", { email: existingUser.email });
+
+        // Trigger new OTP
+        await otpService.createAndSendOtp(existingUser.email, OtpPurpose.EMAIL_VERIFICATION);
+
+        // Fetch elderly profile to return
+        const elderlyProfile = await authRepository.findElderlyProfileByUserId(existingUser.id);
+        if (!elderlyProfile) {
+          throw new Error("User exists but elderly profile is missing. Please contact support.");
+        }
+
+        return {
+          userId: existingUser.id,
+          elderlyProfileId: elderlyProfile.id,
+          email: existingUser.email
+        };
+      } else {
+        logger.warn("Registration attempt for already verified user", { email: existingUser.email });
+        const error = new Error("An account with this email is already registered and verified. Please login instead.");
+        (error as any).statusCode = 409;
+        throw error;
+      }
+    }
+
+    // 2. If user doesn't exist, proceed with creation
     const result = await sequelize.transaction(async (t) => {
       const { user, elderlyProfile } = await createElderlyRecords(data, t);
 
