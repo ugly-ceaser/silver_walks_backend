@@ -1,4 +1,5 @@
 import { QueryInterface, DataTypes } from 'sequelize';
+import { AvailabilityStatus, VerificationStatus } from '../models/NurseProfile.model';
 
 export default {
     up: async (queryInterface: QueryInterface): Promise<void> => {
@@ -54,6 +55,24 @@ export default {
                 type: DataTypes.INTEGER,
                 allowNull: false,
                 defaultValue: 0,
+            });
+        }
+
+        // Add availability_status if missing
+        if (!tableInfo['availability_status']) {
+            await queryInterface.addColumn('nurse_profiles', 'availability_status', {
+                type: DataTypes.STRING,
+                allowNull: false,
+                defaultValue: AvailabilityStatus.OFFLINE,
+            });
+        }
+
+        // Add verification_status if missing
+        if (!tableInfo['verification_status']) {
+            await queryInterface.addColumn('nurse_profiles', 'verification_status', {
+                type: DataTypes.STRING,
+                allowNull: false,
+                defaultValue: VerificationStatus.PENDING,
             });
         }
 

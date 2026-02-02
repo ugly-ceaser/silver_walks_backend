@@ -47,7 +47,7 @@ export const getAvailableNurses = async (filters: {
             specializations: nurse.specializations,
             rating: Number(nurse.rating),
             experienceYears: nurse.experience_years,
-            totalWalks: nurse.total_walks_completed,
+            totalWalks: nurse.total_walks,
             matchingScore: nurse.rating ? Math.round(Number(nurse.rating) * 20) : null
         }));
     } catch (error) {

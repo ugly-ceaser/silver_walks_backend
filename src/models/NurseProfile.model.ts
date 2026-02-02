@@ -32,18 +32,18 @@ interface NurseProfileAttributes {
   experience_years: number;
   max_patients_per_day: number;
   address: string;
-  rating: number;
-  total_walks_completed: number;
-  points_earned: number;
-  points_withdrawn: number;
-  points_balance: number;
-  availability_status: AvailabilityStatus;
-  verification_status: VerificationStatus;
+  rating?: number;
+  total_walks?: number;
+  points_earned?: number;
+  points_withdrawn?: number;
+  points_balance?: number;
+  availability_status?: AvailabilityStatus;
+  verification_status?: VerificationStatus;
   created_at: Date;
   updated_at: Date;
 }
 
-export interface NurseProfileCreationAttributes extends Optional<NurseProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'rating' | 'total_walks_completed' | 'points_earned' | 'points_withdrawn' | 'points_balance' | 'availability_status' | 'verification_status' | 'max_patients_per_day' | 'certifications' | 'specializations'> { }
+export interface NurseProfileCreationAttributes extends Optional<NurseProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'rating' | 'total_walks' | 'points_earned' | 'points_withdrawn' | 'points_balance' | 'availability_status' | 'verification_status' | 'max_patients_per_day' | 'certifications' | 'specializations'> { }
 
 class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAttributes> implements NurseProfileAttributes {
   public id!: string;
@@ -58,7 +58,7 @@ class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAtt
   public max_patients_per_day!: number;
   public address!: string;
   public rating!: number;
-  public total_walks_completed!: number;
+  public total_walks!: number;
   public points_earned!: number;
   public points_withdrawn!: number;
   public points_balance!: number;
@@ -133,7 +133,7 @@ NurseProfile.init(
       allowNull: false,
       defaultValue: 0.0,
     },
-    total_walks_completed: {
+    total_walks: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
