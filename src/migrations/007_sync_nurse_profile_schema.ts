@@ -1,5 +1,4 @@
 import { QueryInterface, DataTypes } from 'sequelize';
-import { AvailabilityStatus, VerificationStatus } from '../models/NurseProfile.model';
 
 export default {
     up: async (queryInterface: QueryInterface): Promise<void> => {
@@ -58,141 +57,98 @@ export default {
             });
         }
 
-        // Availability Status ENUM
-        await queryInterface.sequelize.query(`
-        DO $$
-        BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'availability_status_enum') THEN
-            CREATE TYPE availability_status_enum AS ENUM ('available','offline','busy','reserved','suspended');
-        END IF;
-        END
-        $$;
-        `);
-
-        // Verification Status ENUM
-        await queryInterface.sequelize.query(`
-        DO $$
-        BEGIN
-        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'verification_status_enum') THEN
-            CREATE TYPE verification_status_enum AS ENUM ('pending','approved','rejected');
-        END IF;
-        END
-        $$;
-        `);
-
-        // Add availability_status if missing
-        if (!tableInfo['availability_status']) {
-            await queryInterface.addColumn('nurse_profiles', 'availability_status', {
-                type: 'availability_status_enum',
-                allowNull: false,
-                defaultValue: 'offline',
-            });
-        }
-
-        // Add verification_status if missing
-        if (tableInfo['is_verified'] && !tableInfo['verification_status']) {
-            await queryInterface.addColumn('nurse_profiles', 'verification_status', {
-                type: 'verification_status_enum',
-                allowNull: false,
-                defaultValue: 'pending',
-            });
-
-            await queryInterface.removeColumn('nurse_profiles', 'is_verified');
-        }
-
-
         // 2. Create nurse_certifications table (separate from the JSONB field)
-        // await queryInterface.createTable('nurse_certifications', {
-        //     id: {
-        //         type: DataTypes.UUID,
-        //         defaultValue: DataTypes.UUIDV4,
-        //         primaryKey: true,
-        //     },
-        //     nurse_profile_id: {
-        //         type: DataTypes.UUID,
-        //         allowNull: false,
-        //         references: {
-        //             model: 'nurse_profiles',
-        //             key: 'id',
-        //         },
-        //         onDelete: 'CASCADE',
-        //     },
-        //     name: {
-        //         type: DataTypes.STRING,
-        //         allowNull: false,
-        //     },
-        //     issuer: {
-        //         type: DataTypes.STRING,
-        //         allowNull: false,
-        //     },
-        //     issue_date: {
-        //         type: DataTypes.DATE,
-        //         allowNull: false,
-        //     },
-        //     expiry_date: {
-        //         type: DataTypes.DATE,
-        //         allowNull: true,
-        //     },
-        //     created_at: {
-        //         type: DataTypes.DATE,
-        //         allowNull: false,
-        //         defaultValue: DataTypes.NOW,
-        //     },
-        //     updated_at: {
-        //         type: DataTypes.DATE,
-        //         allowNull: false,
-        //         defaultValue: DataTypes.NOW,
-        //     },
-        // });
+        await queryInterface.createTable('nurse_certifications', {
+            id: {
+                type: DataTypes.UUID,
+                defaultValue: DataTypes.UUIDV4,
+                primaryKey: true,
+            },
+            nurse_profile_id: {
+                type: DataTypes.UUID,
+                allowNull: false,
+                references: {
+                    model: 'nurse_profiles',
+                    key: 'id',
+                },
+                onDelete: 'CASCADE',
+            },
+            name: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            issuer: {
+                type: DataTypes.STRING,
+                allowNull: false,
+            },
+            issue_date: {
+                type: DataTypes.DATE,
+                allowNull: false,
+            },
+            expiry_date: {
+                type: DataTypes.DATE,
+                allowNull: true,
+            },
+            created_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+        });
 
-        // // 3. Create nurse_availability table
-        // await queryInterface.createTable('nurse_availability', {
-        //     id: {
-        //         type: DataTypes.UUID,
-        //         defaultValue: DataTypes.UUIDV4,
-        //         primaryKey: true,
-        //     },
-        //     nurse_id: {
-        //         type: DataTypes.UUID,
-        //         allowNull: false,
-        //         references: {
-        //             model: 'nurse_profiles',
-        //             key: 'id',
-        //         },
-        //         onDelete: 'CASCADE',
-        //     },
-        //     day_of_week: {
-        //         type: DataTypes.INTEGER,
-        //         allowNull: false,
-        //     },
-        //     start_time: {
-        //         type: DataTypes.TIME,
-        //         allowNull: false,
-        //     },
-        //     end_time: {
-        //         type: DataTypes.TIME,
-        //         allowNull: false,
-        //     },
-        //     is_recurring: {
-        //         type: DataTypes.BOOLEAN,
-        //         allowNull: false,
-        //         defaultValue: true,
-        //     },
-        //     specific_date: {
-        //         type: DataTypes.DATEONLY,
-        //         allowNull: true,
-        //     },
-        //     created_at: {
-        //         type: DataTypes.DATE,
-        //         allowNull: false,
-        //         defaultValue: DataTypes.NOW,
-        //     },
-        //     updated_at: {
-        //         type: DataTypes.DATE,
-        //         allowNull: false,
-        //         defaultValue: DataTypes.NOW,
-        //     },
-        // });
+        // 3. Create nurse_availability table
+        await queryInterface.createTable('nurse_availability', {
+            id: {
+                type: DataTypes.UUID,
+                defaultValue: DataTypes.UUIDV4,
+                primaryKey: true,
+            },
+            nurse_id: {
+                type: DataTypes.UUID,
+                allowNull: false,
+                references: {
+                    model: 'nurse_profiles',
+                    key: 'id',
+                },
+                onDelete: 'CASCADE',
+            },
+            day_of_week: {
+                type: DataTypes.INTEGER,
+                allowNull: false,
+            },
+            start_time: {
+                type: DataTypes.TIME,
+                allowNull: false,
+            },
+            end_time: {
+                type: DataTypes.TIME,
+                allowNull: false,
+            },
+            is_recurring: {
+                type: DataTypes.BOOLEAN,
+                allowNull: false,
+                defaultValue: true,
+            },
+            specific_date: {
+                type: DataTypes.DATEONLY,
+                allowNull: true,
+            },
+            created_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+            updated_at: {
+                type: DataTypes.DATE,
+                allowNull: false,
+                defaultValue: DataTypes.NOW,
+            },
+        });
     },
 
     down: async (queryInterface: QueryInterface): Promise<void> => {
