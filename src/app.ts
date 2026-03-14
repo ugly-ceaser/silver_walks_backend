@@ -33,24 +33,7 @@ export const createApp = async (): Promise<Application> => {
   // CORS configuration
   app.use(
     cors({
-      origin: (origin, callback) => {
-        // If no origin (e.g., local request, postman), allow it
-        if (!origin) return callback(null, true);
-
-        const allowedOrigins = config.cors.origin;
-
-        if (allowedOrigins === '*') {
-          callback(null, true);
-        } else if (Array.isArray(allowedOrigins)) {
-          if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes(origin)) {
-            callback(null, true);
-          } else {
-            callback(new Error('Not allowed by CORS'));
-          }
-        } else {
-          callback(null, allowedOrigins === origin);
-        }
-      },
+      origin: true,
       credentials: config.cors.credentials,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -63,6 +46,21 @@ export const createApp = async (): Promise<Application> => {
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));
+
+  // Catch JSON parsing errors
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: 'BAD_REQUEST',
+          message: 'Invalid JSON payload. Please check your request formatting.'
+        }
+      });
+    }
+    next(err);
+  });
+
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   // Response interceptor (format all JSON responses)

@@ -102,6 +102,7 @@ auth.post('/register-elderly', authRateLimiter, validateElderlyRegistration, reg
  *         description: Invalid credentials
  */
 auth.post('/register-nurse', authRateLimiter, validateNurseRegistration, registerNurse);
+
 auth.post('/login-elderly', authRateLimiter, validateElderlyLogin, loginElderlyUser);
 
 // Email Verification
@@ -109,6 +110,7 @@ auth.post('/verify-email', emailVerificationRateLimiter, verifyEmail);
 
 // Password Reset
 auth.post('/forgot-password', passwordResetRateLimiter, validateForgotPassword, forgotPassword);
+
 auth.post('/reset-password', authRateLimiter, validateResetPassword, resetPassword);
 
 export default auth;

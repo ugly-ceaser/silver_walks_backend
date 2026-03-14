@@ -38,6 +38,22 @@ export const addCertificationSchema = Joi.object({
 });
 
 /**
+ * Schema for creating availability rules
+ */
+export const createAvailabilityRuleSchema = Joi.object({
+    recurrence_type: Joi.string().valid('WEEKLY', 'DAILY', 'ONCE').required(),
+    day_of_week: Joi.number().integer().min(0).max(6).when('recurrence_type', {
+        is: 'WEEKLY',
+        then: Joi.required(),
+        otherwise: Joi.optional()
+    }),
+    start_time: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).required(),
+    duration_mins: Joi.number().valid(30, 45, 60).required(),
+    effective_from: Joi.date().iso().required(),
+    effective_until: Joi.date().iso().allow(null).optional()
+});
+
+/**
  * Middleware factory for validation
  */
 const validate = (schema: Joi.ObjectSchema) => {
@@ -65,3 +81,4 @@ const validate = (schema: Joi.ObjectSchema) => {
 export const validateUpdateProfile = validate(updateNurseProfileSchema);
 export const validateUpdateAvailability = validate(updateAvailabilitySchema);
 export const validateAddCertification = validate(addCertificationSchema);
+export const validateCreateAvailabilityRule = validate(createAvailabilityRuleSchema);

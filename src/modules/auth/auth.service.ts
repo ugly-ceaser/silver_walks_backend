@@ -4,7 +4,7 @@ import { SubscriptionStatus, SubscriptionPlan } from "../../types/subscription.t
 import { MobilityLevel } from "../../types/mobility.types";
 import { logger } from "../../utils/logger.util";
 import { comparePassword, hashPassword } from "../../utils/encryption.util";
-import { sendElderlyWelcomeEmail } from "../../utils/emailHelpers.util";
+import { sendElderlyWelcomeEmail, sendPasswordResetSuccessEmail } from "../../utils/emailHelpers.util";
 import { otpService } from "../../services/otp.service";
 import { OtpPurpose } from "../../models/Otp.model";
 import { authRepository } from "./auth.repository";
@@ -66,6 +66,15 @@ interface RegisterNurseResult {
   userId: string;
   nurseProfileId: string;
   email: string;
+}
+
+interface LoginNurseResult {
+  userId: string;
+  nurseProfileId: string;
+  email: string;
+  role: UserRole;
+  accessToken: string;
+  refreshToken: string;
 }
 
 interface LoginElderlyResult {
@@ -150,13 +159,13 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
   );
 
   // Ensure healthConditions is an array
-  const healthList = Array.isArray(healthConditions) 
-    ? healthConditions 
+  const healthList = Array.isArray(healthConditions)
+    ? healthConditions
     : (healthConditions && typeof healthConditions === 'string' ? healthConditions.split(',').map(c => c.trim()).filter(c => c !== '') : []);
 
   // Ensure currentMedications is an array
-  const medicationList = Array.isArray(currentMedications) 
-    ? currentMedications 
+  const medicationList = Array.isArray(currentMedications)
+    ? currentMedications
     : (currentMedications && typeof currentMedications === 'string' ? currentMedications.split(',').map(m => m.trim()).filter(m => m !== '') : []);
 
   // Map mobilityLevel string to enum if needed (case-insensitive)
@@ -249,6 +258,52 @@ const checkElderlyRecordsExist = async (data: CheckElderlyRecords) => {
   }
 
   return { user, elderlyProfile };
+}
+
+/**  Separated DB logic for nurse login  */
+const checkNurseRecordsExist = async (data: CheckElderlyRecords) => {
+  const { identifier, password } = data;
+
+  let user = await authRepository.findUserByEmail(identifier);
+  let nurseProfile = null;
+
+  // If not found by email, try phone lookup
+  if (!user) {
+    nurseProfile = await authRepository.findNurseProfileByPhone(identifier);
+
+    if (!nurseProfile || !nurseProfile.user_id) {
+      throw new Error("Invalid credentials");
+    }
+
+    user = await authRepository.findUserById(nurseProfile.user_id);
+  }
+
+  // If somehow user still doesn't exist
+  if (!user) {
+    throw new Error("Invalid credentials");
+  }
+
+  // 2️⃣ Validate password using bcrypt
+  const isValidPassword = await comparePassword(password, user.password_hash);
+
+  if (!isValidPassword) {
+    throw new Error("Invalid credentials");
+  }
+
+  if (!user.is_email_verified) {
+    throw new Error("Email not verified. Please verify your email to login.");
+  }
+
+  // 3️⃣ Fetch nurse profile if not found earlier
+  if (!nurseProfile) {
+    nurseProfile = await authRepository.findNurseProfileByUserId(user.id);
+
+    if (!nurseProfile) {
+      throw new Error("Nurse profile not found");
+    }
+  }
+
+  return { user, nurseProfile };
 }
 
 /**
@@ -472,6 +527,17 @@ export const completePasswordReset = async (
     user.password_hash = hashedPassword;
     await user.save();
 
+    // Fetch the user's profile to get their name for the email
+    const profile = await authRepository.findElderlyProfileByUserId(user.id) || await authRepository.findNurseProfileByUserId(user.id);
+    const userName = profile ? profile.name : 'Silver Walks User';
+
+    // 5. Send success notification
+    sendPasswordResetSuccessEmail(
+      user.email,
+      userName,
+      process.env.CLIENT_URL || 'http://localhost:3000/login'
+    ).catch(err => logger.error('Failed to send password reset success email', err));
+
     // TODO: Invalidate all sessions/tokens (if applicable)
 
     logger.info("Password reset successfully", { userId: user.id });
@@ -566,6 +632,46 @@ export const registerNurse = async (
     return result;
   } catch (error) {
     logger.error("Error registering nurse", error as Error);
+    throw error;
+  }
+};
+
+/**
+ *  LOGIN NURSE USER
+ */
+export const loginNurse = async (
+  identifier: string, // email OR phone
+  password: string
+): Promise<LoginNurseResult> => {
+  logger.info("Attempting nurse user login", { identifier });
+
+  try {
+    const { user, nurseProfile } = await checkNurseRecordsExist({ identifier, password });
+
+    if (!nurseProfile) {
+      throw new Error("Nurse profile not found");
+    }
+
+    // Generate JWT tokens
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    logger.info("Nurse login successful", { userId: user.id });
+
+    return {
+      userId: user.id,
+      nurseProfileId: nurseProfile.id,
+      email: user.email,
+      role: user.role,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+
+  } catch (error) {
+    logger.error("Error logging in nurse user", error as Error);
     throw error;
   }
 };

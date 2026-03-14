@@ -2,7 +2,7 @@ import { Router } from 'express';
 import * as walksController from './walks.controller';
 import { authenticate } from '../../middlewares/auth.middleware';
 
-import { validateCreateWalk } from './walks.schemaValidator';
+import { validateCreateWalk, validateCreateBooking } from './walks.schemaValidator';
 
 const walks = Router();
 
@@ -12,8 +12,11 @@ walks.use(authenticate);
 // GET /api/v1/walks - Get all walk sessions with filters
 walks.get('/', walksController.getWalkSessions);
 
-// POST /api/v1/walks - Create a new walk session
+// POST /api/v1/walks - Create a new walk session (Legacy / Multi-date)
 walks.post('/', validateCreateWalk, walksController.createWalk);
+
+// POST /api/v1/walks/book - Book a specific slot
+walks.post('/book', validateCreateBooking, walksController.bookSlot);
 
 // POST /api/v1/walks/match - Find a matching nurse
 walks.post('/match', walksController.matchWalk);

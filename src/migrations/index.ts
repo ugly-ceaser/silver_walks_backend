@@ -25,7 +25,7 @@ export class MigrationRunner {
    */
   private async ensureMigrationsTable(): Promise<void> {
     const queryInterface = this.sequelize.getQueryInterface();
-    
+
     await queryInterface.createTable('migrations', {
       name: {
         type: 'VARCHAR(255)',
@@ -91,7 +91,7 @@ export class MigrationRunner {
     }
 
     const queryInterface = this.sequelize.getQueryInterface();
-    
+
     logger.info(`Running migration: ${filename}`);
     await migration.up(queryInterface, this.sequelize);
     await this.recordMigration(filename);
@@ -140,7 +140,7 @@ export class MigrationRunner {
   async rollbackLastMigration(): Promise<void> {
     try {
       const executedMigrations = await this.getExecutedMigrations();
-      
+
       if (executedMigrations.length === 0) {
         logger.info('No migrations to rollback');
         return;
@@ -155,15 +155,15 @@ export class MigrationRunner {
       }
 
       const queryInterface = this.sequelize.getQueryInterface();
-      
+
       logger.info(`Rolling back migration: ${lastMigration}`);
       await migration.down(queryInterface, this.sequelize);
-      
+
       await this.sequelize.query(
         'DELETE FROM migrations WHERE name = ?',
         { replacements: [lastMigration] }
       );
-      
+
       logger.info(`Migration rollback completed: ${lastMigration}`);
     } catch (error) {
       logger.error('Migration rollback failed', error as Error);

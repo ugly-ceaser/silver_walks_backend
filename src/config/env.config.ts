@@ -90,7 +90,7 @@ export const config: Config = {
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN === '*' ? '*' : process.env.CORS_ORIGIN?.split(',') || 'https://silverwalks.vercel.app' || 'http://localhost:5173',
+    origin: process.env.CORS_ORIGIN || '*',
     credentials: process.env.CORS_CREDENTIALS === 'true',
   },
 

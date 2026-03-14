@@ -88,6 +88,23 @@ export class AuthRepository {
     async findElderlyProfileByUserId(userId: string): Promise<ElderlyProfile | null> {
         return ElderlyProfile.findOne({ where: { user_id: userId } });
     }
+
+    /**
+     * Find Nurse Profile by User ID
+     */
+    async findNurseProfileByUserId(userId: string): Promise<NurseProfile | null> {
+        return NurseProfile.findOne({ where: { user_id: userId } });
+    }
+
+    /**
+     * Find Nurse Profile by Phone
+     */
+    async findNurseProfileByPhone(phone: string): Promise<NurseProfile | null> {
+        return NurseProfile.findOne({
+            where: { phone },
+            include: [{ model: User, as: "user" }],
+        });
+    }
 }
 
 export const authRepository = new AuthRepository();

@@ -36,7 +36,7 @@ import { createdResponse } from '../../utils/response.util';
  * Register Elderly User (3-step flow)
  */
 export const registerElderlyUser = async (req: Request, res: Response, next: NextFunction) => {
-  console.log("Registering elderly user:", req.body);
+
   try {
 
     const result = await authService.registerElderlyUser(req.body);
@@ -101,10 +101,23 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
  * Register Nurse User
  */
 export const registerNurse = async (req: Request, res: Response, next: NextFunction) => {
-  console.log("Registering nurse:", req.body);
+
   try {
     const result = await authService.registerNurse(req.body);
     return createdResponse(res, result, 'Nurse registered successfully. Please check your email for verification.');
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Login Nurse User
+ */
+export const loginNurse = async (req: Request, res: Response, next: NextFunction) => {
+  const { identifier, password } = req.body;
+  try {
+    const result = await authService.loginNurse(identifier, password);
+    return createdResponse(res, result, 'Nurse logged in successfully.', 200);
   } catch (error) {
     return next(error);
   }

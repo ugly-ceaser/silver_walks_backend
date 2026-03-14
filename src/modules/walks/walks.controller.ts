@@ -1,8 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import * as walksByService from './walks.service';
+import { SlotService } from './services/Slot.service';
+import { BookingService } from './services/Booking.service';
 import ElderlyProfile from '../../models/ElderlyProfile.model';
 import { NotFoundError, ValidationError } from '../../utils/error.util';
 import { logger } from '../../utils/logger.util';
+import { format, addDays } from 'date-fns';
 
 /**
  * Helper to get elderly profile for the current user
@@ -148,6 +151,35 @@ export const createWalk = async (req: Request, res: Response, next: NextFunction
 };
 
 /**
+ * POST /api/v1/walks/book
+ * Book a specific slot
+ */
+export const bookSlot = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.user?.userId;
+        if (!userId) throw new ValidationError('User ID not found in request');
+
+        const profile = await getElderlyProfileByUserId(userId);
+        const { slotId, notes } = req.body;
+
+        const booking = await BookingService.createBooking({
+            slotId,
+            elderlyId: profile.id,
+            bookedBy: userId,
+            notes
+        });
+
+        res.status(201).json({
+            success: true,
+            message: 'Slot booked successfully',
+            data: booking
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
  * POST /api/v1/walks/match
  * Find a matching nurse for a walk session
  */
@@ -185,11 +217,25 @@ export const getAvailableSlots = async (req: Request, res: Response, next: NextF
 
         if (!date) throw new ValidationError('Date is required');
 
-        const slots = await walksByService.getAvailableTimeSlots(date as string);
+        const startDate = date as string;
+        const endDate = format(addDays(new Date(startDate), 7), 'yyyy-MM-dd'); // Default to 7 days ahead
+
+        const slots = await SlotService.getAvailableSlots({
+            startDate,
+            endDate
+        });
 
         res.status(200).json({
             success: true,
-            data: slots
+            data: slots.map(slot => ({
+                id: slot.id,
+                nurseId: slot.nurse_id,
+                nurseName: (slot as any).nurse?.name,
+                date: slot.date,
+                time: slot.start_time,
+                duration: slot.duration_mins,
+                rating: (slot as any).nurse?.rating
+            }))
         });
     } catch (error) {
         next(error);

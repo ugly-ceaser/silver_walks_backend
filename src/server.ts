@@ -19,7 +19,12 @@ const startServer = async (): Promise<void> => {
         env: config.env,
         apiVersion: config.apiVersion,
       });
+      console.log('--- Server listen callback executed ---');
     });
+
+    server.on('close', () => console.log('--- Server instance emitted "close" ---'));
+    server.on('error', (err) => console.error('--- Server instance emitted "error" ---', err));
+
 
     // Graceful shutdown
     const gracefulShutdown = (signal: string) => {
@@ -50,6 +55,8 @@ const startServer = async (): Promise<void> => {
       logger.error('Uncaught Exception', error);
       gracefulShutdown('uncaughtException');
     });
+
+    console.log('--- reached end of startServer try block ---');
   } catch (error) {
     logger.error('Failed to start server', error as Error);
     process.exit(1);

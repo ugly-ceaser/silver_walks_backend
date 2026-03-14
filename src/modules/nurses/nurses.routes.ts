@@ -5,7 +5,8 @@ import { requireNurse } from '../../middlewares/rbac.middleware';
 import {
     validateUpdateProfile,
     validateUpdateAvailability,
-    validateAddCertification
+    validateAddCertification,
+    validateCreateAvailabilityRule
 } from './nurses.schemaValidator';
 
 const nurses = Router();
@@ -22,5 +23,10 @@ nurses.patch('/profile', requireNurse, validateUpdateProfile, nursesController.u
 nurses.put('/availability', requireNurse, validateUpdateAvailability, nursesController.updateAvailability);
 nurses.post('/certifications', requireNurse, validateAddCertification, nursesController.addCertification);
 nurses.delete('/certifications/:id', requireNurse, nursesController.removeCertification);
+
+// Availability Rules
+nurses.get('/availability/rules', requireNurse, nursesController.getAvailabilityRules);
+nurses.post('/availability/rules', requireNurse, validateCreateAvailabilityRule, nursesController.createAvailabilityRule);
+nurses.delete('/availability/rules/:id', requireNurse, nursesController.deleteAvailabilityRule);
 
 export default nurses;

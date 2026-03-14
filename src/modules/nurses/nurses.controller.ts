@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as nursesService from './nurses.service';
-import { createdResponse } from '../../utils/response.util';
+import { getPaginationParams } from '../../utils/pagination.util';
+import { createdResponse, paginatedResponse } from '../../utils/response.util';
 import ElderlyProfile from '../../models/ElderlyProfile.model';
 
 /**
@@ -10,6 +11,7 @@ import ElderlyProfile from '../../models/ElderlyProfile.model';
 export const getNurses = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { specialization, date, time } = req.query;
+        const pagination = getPaginationParams(req);
         const userId = req.user?.userId;
 
         let elderlyId: string | undefined;
@@ -18,17 +20,14 @@ export const getNurses = async (req: Request, res: Response, next: NextFunction)
             elderlyId = elderly?.id;
         }
 
-        const nurses = await nursesService.getAvailableNurses({
+        const { data, meta } = await nursesService.getAvailableNurses({
             specialization: specialization as string,
             date: date as string,
             time: time as string,
             elderlyId
-        });
+        }, pagination);
 
-        res.status(200).json({
-            success: true,
-            data: nurses
-        });
+        return paginatedResponse(res, data, meta, 'Nurses fetched successfully');
     } catch (error) {
         next(error);
     }
@@ -100,6 +99,46 @@ export const removeCertification = async (req: Request, res: Response, next: Nex
         const certId = req.params.id;
         await nursesService.manageNurseCertification(userId, 'remove', { certId });
         return createdResponse(res, null, 'Certification removed successfully', 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * POST /api/v1/nurses/availability/rules
+ */
+export const createAvailabilityRule = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req.user as any).userId;
+        const rule = await nursesService.createAvailabilityRule(userId, req.body);
+        return createdResponse(res, rule, 'Availability rule created successfully', 201);
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * GET /api/v1/nurses/availability/rules
+ */
+export const getAvailabilityRules = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req.user as any).userId;
+        const rules = await nursesService.getAvailabilityRules(userId);
+        return createdResponse(res, rules, 'Availability rules fetched successfully', 200);
+    } catch (error) {
+        next(error);
+    }
+};
+
+/**
+ * DELETE /api/v1/nurses/availability/rules/:id
+ */
+export const deleteAvailabilityRule = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req.user as any).userId;
+        const ruleId = req.params.id;
+        await nursesService.deleteAvailabilityRule(userId, ruleId);
+        return createdResponse(res, null, 'Availability rule deleted successfully', 200);
     } catch (error) {
         next(error);
     }

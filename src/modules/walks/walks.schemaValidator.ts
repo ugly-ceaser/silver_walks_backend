@@ -18,6 +18,14 @@ export const createWalkSchema = Joi.object({
 });
 
 /**
+ * Schema for booking via a specific slot
+ */
+export const createBookingSchema = Joi.object({
+    slotId: Joi.string().uuid().required(),
+    notes: Joi.string().max(500).optional()
+});
+
+/**
  * Middleware factory for validation
  */
 const validate = (schema: Joi.ObjectSchema) => {
@@ -43,3 +51,4 @@ const validate = (schema: Joi.ObjectSchema) => {
 };
 
 export const validateCreateWalk = validate(createWalkSchema);
+export const validateCreateBooking = validate(createBookingSchema);

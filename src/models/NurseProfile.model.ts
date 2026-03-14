@@ -32,6 +32,7 @@ interface NurseProfileAttributes {
   experience_years: number;
   max_patients_per_day: number;
   address: string;
+  bio?: string;
   rating: number;
   total_walks_completed: number;
   points_earned: number;
@@ -57,6 +58,7 @@ class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAtt
   public experience_years!: number;
   public max_patients_per_day!: number;
   public address!: string;
+  public bio?: string;
   public rating!: number;
   public total_walks_completed!: number;
   public points_earned!: number;
@@ -127,6 +129,10 @@ NurseProfile.init(
     address: {
       type: DataTypes.TEXT,
       allowNull: false,
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     rating: {
       type: DataTypes.DECIMAL(3, 2),

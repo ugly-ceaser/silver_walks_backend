@@ -8,12 +8,13 @@ export interface PaginationParams {
 }
 
 export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
   totalPages: number;
-  hasNext: boolean;
-  hasPrev: boolean;
+  isLastPage: boolean;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
 }
 
 export interface PaginatedResponse<T> {
@@ -28,7 +29,7 @@ export const getPaginationParams = (req: Request): PaginationParams => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(
     config.pagination.maxLimit,
-    Math.max(1, parseInt(req.query.limit as string) || config.pagination.defaultLimit)
+    Math.max(1, parseInt(req.query.limit as string) || 10)
   );
   const offset = (page - 1) * limit;
 
@@ -46,12 +47,13 @@ export const createPaginationMeta = (
   const totalPages = Math.ceil(total / limit);
 
   return {
-    page,
-    limit,
-    total,
+    currentPage: page,
+    itemsPerPage: limit,
+    totalItems: total,
     totalPages,
-    hasNext: page < totalPages,
-    hasPrev: page > 1,
+    isLastPage: page >= totalPages || totalPages === 0,
+    hasNextPage: page < totalPages,
+    hasPrevPage: page > 1,
   };
 };
 

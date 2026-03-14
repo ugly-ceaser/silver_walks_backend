@@ -369,7 +369,7 @@ export const findMatchingNurse = async (
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay();
 
-    const nurses = await nursesRepository.findAvailableNurses({
+    const { rows: nurses } = await nursesRepository.findAvailableNurses({
         date: dateObj,
         dayOfWeek,
         time,

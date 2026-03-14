@@ -3,14 +3,18 @@ import { logger } from "../../utils/logger.util";
 import { sequelize } from "../../config/database.config";
 import { NotFoundError } from "../../utils/error.util";
 import { nurseAvailabilityService } from "./services/nurseAvailability.service";
+import { AvailabilityRuleService } from "./services/availabilityRule.service";
+import { AvailabilityRuleCreationAttributes } from "../../models/AvailabilityRule.model";
+
+import { getPaginationParams, createPaginationMeta } from "../../utils/pagination.util";
 
 export const getAvailableNurses = async (filters: {
     specialization?: string;
     date?: string;
     time?: string;
     elderlyId?: string;
-}) => {
-    logger.info('Fetching available nurses', filters);
+}, pagination: { limit: number; offset: number; page: number }) => {
+    logger.info('Fetching available nurses', { filters, pagination });
 
     try {
         let dayOfWeek: number | undefined;
@@ -21,26 +25,15 @@ export const getAvailableNurses = async (filters: {
             dayOfWeek = dateObj.getDay();
         }
 
-        const nurses = await nursesRepository.findAvailableNurses({
+        const { rows: nurses, count: total } = await nursesRepository.findAvailableNurses({
             specialization: filters.specialization,
             date: dateObj,
             dayOfWeek,
             time: filters.time,
             elderlyId: filters.elderlyId
-        });
+        }, pagination);
 
-        // Use the centralized availability service for detailed filtering if date and time are provided
-        let filteredNurses = nurses;
-        if (dateObj && filters.time) {
-            filteredNurses = nurseAvailabilityService.filterAvailableNurses(
-                nurses,
-                dateObj,
-                filters.time,
-                filters.elderlyId
-            );
-        }
-
-        return filteredNurses.map(nurse => ({
+        const data = nurses.map(nurse => ({
             id: nurse.id,
             name: nurse.name,
             profilePicture: nurse.profile_picture,
@@ -48,8 +41,12 @@ export const getAvailableNurses = async (filters: {
             rating: Number(nurse.rating),
             experienceYears: nurse.experience_years,
             totalWalks: nurse.total_walks_completed,
-            matchingScore: nurse.rating ? Math.round(Number(nurse.rating) * 20) : null
+            matchingScore: nurse.rating ? Math.round(Number(nurse.rating) * 20) : 0
         }));
+
+        const meta = createPaginationMeta(pagination.page, pagination.limit, total);
+
+        return { data, meta };
     } catch (error) {
         logger.error('Error fetching available nurses', error as Error);
         throw error;
@@ -121,10 +118,43 @@ export const manageNurseCertification = async (userId: string, action: 'add' | '
     }
 
     if (action === 'add') {
-        const cert = await nursesRepository.addCertification(nurse.id, data);
+        const { issueDate, expiryDate, ...rest } = data;
+        const certData = {
+            ...rest,
+            issue_date: issueDate,
+            expiry_date: expiryDate
+        };
+        const cert = await nursesRepository.addCertification(nurse.id, certData);
         return cert;
     } else {
         await nursesRepository.removeCertification(data.certId, nurse.id);
         return { success: true };
     }
+};
+
+/**
+ * Availability Rule Management
+ */
+export const createAvailabilityRule = async (userId: string, data: Partial<AvailabilityRuleCreationAttributes>) => {
+    const nurse = await nursesRepository.findNurseByUserId(userId);
+    if (!nurse) throw new NotFoundError('Nurse profile not found');
+
+    return await AvailabilityRuleService.createRule({
+        ...data,
+        nurse_id: nurse.id
+    } as AvailabilityRuleCreationAttributes);
+};
+
+export const getAvailabilityRules = async (userId: string) => {
+    const nurse = await nursesRepository.findNurseByUserId(userId);
+    if (!nurse) throw new NotFoundError('Nurse profile not found');
+
+    return await AvailabilityRuleService.getRulesByNurse(nurse.id);
+};
+
+export const deleteAvailabilityRule = async (userId: string, ruleId: string) => {
+    const nurse = await nursesRepository.findNurseByUserId(userId);
+    if (!nurse) throw new NotFoundError('Nurse profile not found');
+
+    return await AvailabilityRuleService.deleteRule(ruleId, nurse.id);
 };

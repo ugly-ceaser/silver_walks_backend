@@ -65,6 +65,23 @@ export const passwordResetTemplate = `
 `;
 
 /**
+ * Password Reset Success Template
+ */
+export const passwordResetSuccessTemplate = `
+  <h2>Password Reset Successful ✅</h2>
+  
+  <p>Hi {{name}},</p>
+  
+  <p>Your password has been successfully updated.</p>
+  
+  <p>If you did not make this change, please contact our support team immediately to secure your account.</p>
+  
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="{{loginUrl}}" class="button">Log in to your account</a>
+  </div>
+`;
+
+/**
  * Walk Scheduled Notification
  */
 export const walkScheduledTemplate = `
