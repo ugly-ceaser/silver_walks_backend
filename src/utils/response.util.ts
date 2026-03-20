@@ -22,10 +22,11 @@ export interface ApiResponse<T = any> {
  * Pagination metadata
  */
 export interface PaginationMeta {
-  page: number;
-  limit: number;
-  total: number;
+  currentPage: number;
+  itemsPerPage: number;
+  totalItems: number;
   totalPages: number;
+  isLastPage: boolean;
   hasNextPage: boolean;
   hasPrevPage: boolean;
 }

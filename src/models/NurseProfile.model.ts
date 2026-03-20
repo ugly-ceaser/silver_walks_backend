@@ -32,18 +32,22 @@ interface NurseProfileAttributes {
   experience_years: number;
   max_patients_per_day: number;
   address: string;
-  rating?: number;
-  total_walks?: number;
-  points_earned?: number;
-  points_withdrawn?: number;
-  points_balance?: number;
-  availability_status?: AvailabilityStatus;
-  verification_status?: VerificationStatus;
+  bio?: string;
+  rating: number;
+  total_walks_completed: number;
+  points_earned: number;
+  points_withdrawn: number;
+  points_balance: number;
+  availability_status: AvailabilityStatus;
+  verification_status: VerificationStatus;
+  latitude: number;
+  longitude: number;
+  device_token?: string;
   created_at: Date;
   updated_at: Date;
 }
 
-export interface NurseProfileCreationAttributes extends Optional<NurseProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'rating' | 'total_walks' | 'points_earned' | 'points_withdrawn' | 'points_balance' | 'availability_status' | 'verification_status' | 'max_patients_per_day' | 'certifications' | 'specializations'> { }
+export interface NurseProfileCreationAttributes extends Optional<NurseProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'rating' | 'total_walks_completed' | 'points_earned' | 'points_withdrawn' | 'points_balance' | 'availability_status' | 'verification_status' | 'max_patients_per_day' | 'certifications' | 'specializations' | 'device_token'> { }
 
 class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAttributes> implements NurseProfileAttributes {
   public id!: string;
@@ -57,6 +61,7 @@ class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAtt
   public experience_years!: number;
   public max_patients_per_day!: number;
   public address!: string;
+  public bio?: string;
   public rating!: number;
   public total_walks!: number;
   public points_earned!: number;
@@ -64,6 +69,9 @@ class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAtt
   public points_balance!: number;
   public availability_status!: AvailabilityStatus;
   public verification_status!: VerificationStatus;
+  public latitude!: number;
+  public longitude!: number;
+  public device_token?: string;
   public created_at!: Date;
   public updated_at!: Date;
 
@@ -128,6 +136,10 @@ NurseProfile.init(
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     rating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: false,
@@ -162,6 +174,18 @@ NurseProfile.init(
       type: DataTypes.ENUM(...Object.values(VerificationStatus)),
       allowNull: false,
       defaultValue: VerificationStatus.PENDING,
+    },
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
+      allowNull: true,
+    },
+    device_token: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

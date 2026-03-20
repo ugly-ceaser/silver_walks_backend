@@ -23,11 +23,14 @@ interface ElderlyProfileAttributes {
   subscription_end_date?: Date;
   walks_remaining: number;
   walks_used_this_month: number;
+  latitude: number;
+  longitude: number;
+  device_token?: string;
   created_at: Date;
   updated_at: Date;
 }
 
-export interface ElderlyProfileCreationAttributes extends Optional<ElderlyProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'health_profile_id' | 'assigned_nurse_id' | 'subscription_start_date' | 'subscription_end_date' | 'walks_remaining' | 'walks_used_this_month'> { }
+export interface ElderlyProfileCreationAttributes extends Optional<ElderlyProfileAttributes, 'id' | 'created_at' | 'updated_at' | 'profile_picture' | 'health_profile_id' | 'assigned_nurse_id' | 'subscription_start_date' | 'subscription_end_date' | 'walks_remaining' | 'walks_used_this_month' | 'device_token'> { }
 
 class ElderlyProfile extends Model<ElderlyProfileAttributes, ElderlyProfileCreationAttributes> implements ElderlyProfileAttributes {
   public id!: string;
@@ -46,6 +49,9 @@ class ElderlyProfile extends Model<ElderlyProfileAttributes, ElderlyProfileCreat
   public subscription_end_date?: Date;
   public walks_remaining!: number;
   public walks_used_this_month!: number;
+  public latitude!: number;
+  public longitude!: number;
+  public device_token?: string;
   public created_at!: Date;
   public updated_at!: Date;
 }
@@ -133,6 +139,18 @@ ElderlyProfile.init(
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+    },
+    latitude: {
+      type: DataTypes.DECIMAL(10, 8),
+      allowNull: true,
+    },
+    longitude: {
+      type: DataTypes.DECIMAL(11, 8),
+      allowNull: true,
+    },
+    device_token: {
+      type: DataTypes.STRING(512),
+      allowNull: true,
     },
     created_at: {
       type: DataTypes.DATE,

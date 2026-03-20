@@ -16,7 +16,7 @@ export class NursesRepository {
         dayOfWeek?: number;
         time?: string;
         elderlyId?: string;
-    } = {}): Promise<NurseProfile[]> {
+    } = {}, pagination?: { limit: number; offset: number }): Promise<{ rows: NurseProfile[]; count: number }> {
         const where: any = {
             verification_status: VerificationStatus.APPROVED,
             [Op.or]: [
@@ -45,7 +45,6 @@ export class NursesRepository {
         ];
 
         // If date/time/dayOfWeek are provided, we should ideally filter by availability
-        // For simplicity in this first pass, we'll fetch then filter or use a joining query
         if (filters.dayOfWeek !== undefined || filters.date) {
             include[0].required = true;
             include[0].where = {
@@ -61,10 +60,13 @@ export class NursesRepository {
             }
         }
 
-        return NurseProfile.findAll({
+        return NurseProfile.findAndCountAll({
             where,
             include,
-            order: [['rating', 'DESC']]
+            order: [['rating', 'DESC']],
+            limit: pagination?.limit,
+            offset: pagination?.offset,
+            distinct: true // Required when including one-to-many associations with count
         });
     }
 
@@ -75,7 +77,7 @@ export class NursesRepository {
         return NurseProfile.findByPk(id, {
             include: [
                 { model: NurseAvailability, as: 'availability' },
-                { model: NurseCertification, as: 'certifications' },
+                { model: NurseCertification, as: 'certifications_list' },
                 { model: User, as: 'user' }
             ]
         });
@@ -89,7 +91,7 @@ export class NursesRepository {
             where: { user_id: userId },
             include: [
                 { model: NurseAvailability, as: 'availability' },
-                { model: NurseCertification, as: 'certifications' },
+                { model: NurseCertification, as: 'certifications_list' },
                 { model: User, as: 'user' }
             ]
         });
@@ -147,6 +149,13 @@ export class NursesRepository {
             where: { id: certId, nurse_profile_id: nurseId },
             transaction: t
         });
+    }
+
+    /**
+     * Find Elderly Profile by ID
+     */
+    async findElderlyProfileById(id: string): Promise<ElderlyProfile | null> {
+        return ElderlyProfile.findByPk(id);
     }
 }
 

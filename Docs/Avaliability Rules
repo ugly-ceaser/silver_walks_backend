@@ -1,0 +1,33 @@
+# Availability Rules & Interpretation
+
+The system uses a rule-based engine to manage nurse availability. These rules are "materialized" into concrete time slots that can be booked or searched.
+
+## Rule Structure
+
+| Field | Interpretation |
+| :--- | :--- |
+| `recurrence_type` | Defines how the rule repeats (DAILY, WEEKLY, or ONCE). |
+| `day_of_week` | (0-6) Used for WEEKLY rules to specify which day (Sunday=0). |
+| `start_time` | The local time the shift or availability starts. |
+| `duration_mins` | Length of the availability window in minutes. |
+| `effective_from` | The date the rule takes effect. |
+| `effective_until` | Optional date when the rule stops being valid. |
+| `is_active` | Toggle to enable/disable the rule without deleting it. |
+
+## Recurrence Types
+
+1.  **DAILY**: Generates a slot for every single day between `effective_from` and `effective_until`.
+2.  **WEEKLY**: Generates a slot only on the specified `day_of_week` every week.
+3.  **ONCE**: Generates exactly one slot on the `effective_from` date.
+
+## How it Works (Materialization)
+
+When a rule is created or updated, the **Slot Engine** runs a "Materialization" process:
+
+- **Slot Generation**: The engine looks ahead (by default, 30 days) and creates individual `AvailabilitySlot` records in the database based on the rule's pattern.
+- **Deduplication**: It avoids creating duplicate slots if a slot for that specific time and nurse already exists.
+- **Status Management**: New slots are created with an `OPEN` status.
+- **Cleanup**: A background process periodically marks past `OPEN` slots as `EXPIRED` if they weren't booked.
+
+## Why this approach?
+Instead of calculating availability on the fly during every search (which is slow), the system pre-generates the slots. This makes searching for "Available Nurses at 10:00 AM on Monday" a simple database query.

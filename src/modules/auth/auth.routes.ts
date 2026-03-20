@@ -5,12 +5,16 @@ import {
     verifyEmail,
     forgotPassword,
     resetPassword,
-    registerNurse
+    registerNurse,
+    refreshTokens,
+    logout
 } from './auth.controller';
+import { authenticate } from '../../middlewares/auth.middleware';
 import {
     authRateLimiter,
     emailVerificationRateLimiter,
-    passwordResetRateLimiter
+    passwordResetRateLimiter,
+    createCustomRateLimiter
 } from '../../middlewares/rateLimit.middleware';
 
 import {
@@ -22,6 +26,9 @@ import {
 } from './auth.schemaValidator';
 
 const auth = Router();
+
+// Stricter rate limiter for OTP verification (e.g., 5 attempts per 15 mins)
+const otpVerifyRateLimiter = createCustomRateLimiter(15 * 60 * 1000, 5, 'Too many OTP verification attempts. Please try again later.');
 
 /**
  * @swagger
@@ -102,13 +109,22 @@ auth.post('/register-elderly', authRateLimiter, validateElderlyRegistration, reg
  *         description: Invalid credentials
  */
 auth.post('/register-nurse', authRateLimiter, validateNurseRegistration, registerNurse);
+
 auth.post('/login-elderly', authRateLimiter, validateElderlyLogin, loginElderlyUser);
 
-// Email Verification
+// Email Verification (legacy/specific)
 auth.post('/verify-email', emailVerificationRateLimiter, verifyEmail);
+
+// Generic OTP verification with stricter limiting
+auth.post('/verify-otp', otpVerifyRateLimiter, verifyEmail); 
 
 // Password Reset
 auth.post('/forgot-password', passwordResetRateLimiter, validateForgotPassword, forgotPassword);
+
 auth.post('/reset-password', authRateLimiter, validateResetPassword, resetPassword);
+
+// Token Management
+auth.post('/refresh', refreshTokens);
+auth.post('/logout', authenticate, logout);
 
 export default auth;

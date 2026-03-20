@@ -4,11 +4,15 @@ import { SubscriptionStatus, SubscriptionPlan } from "../../types/subscription.t
 import { MobilityLevel } from "../../types/mobility.types";
 import { logger } from "../../utils/logger.util";
 import { comparePassword, hashPassword } from "../../utils/encryption.util";
-import { sendElderlyWelcomeEmail } from "../../utils/emailHelpers.util";
+import { sendElderlyWelcomeEmail, sendPasswordResetSuccessEmail } from "../../utils/emailHelpers.util";
 import { otpService } from "../../services/otp.service";
 import { OtpPurpose } from "../../models/Otp.model";
 import { authRepository } from "./auth.repository";
-import { generateTokenPair } from "../../utils/jwt.util";
+import { generateTokenPair, verifyRefreshToken } from "../../utils/jwt.util";
+import RefreshToken from "../../models/RefreshToken.model";
+import AuthEvent, { AuthEventType } from "../../models/AuthEvent.model";
+import { hashData } from "../../utils/encryption.util";
+import { Op } from "sequelize";
 
 
 //  DTO Type
@@ -68,6 +72,15 @@ interface RegisterNurseResult {
   email: string;
 }
 
+interface LoginNurseResult {
+  userId: string;
+  nurseProfileId: string;
+  email: string;
+  role: UserRole;
+  accessToken: string;
+  refreshToken: string;
+}
+
 interface LoginElderlyResult {
   userId: string;
   elderlyProfileId: string;
@@ -84,6 +97,32 @@ const generateFallbackEmail = (phone: string) => `elderly_${phone}@silverwalks.c
 const calculateDOB = (age: number) => {
   const year = new Date().getFullYear() - age;
   return new Date(year, 0, 1); // January 1st
+};
+
+/** Helper: Log Auth Event */
+const logAuthEvent = async (
+  userId: string | undefined,
+  eventType: AuthEventType,
+  reqInfo: { ip: string; userAgent: string },
+  metadata?: any
+) => {
+  try {
+    await AuthEvent.create({
+      user_id: userId,
+      event_type: eventType,
+      ip_address: reqInfo.ip,
+      user_agent: reqInfo.userAgent,
+      metadata,
+    });
+  } catch (error) {
+    logger.error('Failed to log auth event', error as Error);
+  }
+};
+
+/** Helper: Dummy password check for timing-safe account enumeration guard */
+const dummyPasswordCheck = async (password: string) => {
+  const dummyHash = '$argon2id$v=19$m=65536,t=3,p=4$6vB7f7M7...'; // Realistic Argon2 dummy hash
+  await comparePassword(password, dummyHash);
 };
 
 /**  Separated DB logic  */
@@ -132,6 +171,8 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
       subscription_status: SubscriptionStatus.ACTIVE,
       walks_remaining: 0,
       walks_used_this_month: 0,
+      latitude: 0, // Default for now
+      longitude: 0, // Default for now
     },
     t
   );
@@ -150,13 +191,13 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
   );
 
   // Ensure healthConditions is an array
-  const healthList = Array.isArray(healthConditions) 
-    ? healthConditions 
+  const healthList = Array.isArray(healthConditions)
+    ? healthConditions
     : (healthConditions && typeof healthConditions === 'string' ? healthConditions.split(',').map(c => c.trim()).filter(c => c !== '') : []);
 
   // Ensure currentMedications is an array
-  const medicationList = Array.isArray(currentMedications) 
-    ? currentMedications 
+  const medicationList = Array.isArray(currentMedications)
+    ? currentMedications
     : (currentMedications && typeof currentMedications === 'string' ? currentMedications.split(',').map(m => m.trim()).filter(m => m !== '') : []);
 
   // Map mobilityLevel string to enum if needed (case-insensitive)
@@ -205,34 +246,34 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
 };
 
 /**  Separated DB logic for login  */
-const checkElderlyRecordsExist = async (data: CheckElderlyRecords) => {
+const checkElderlyRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip: string; userAgent: string }) => {
   const { identifier, password } = data;
+  const genericError = "Invalid credentials";
 
   let user = await authRepository.findUserByEmail(identifier);
-
   let elderlyProfile = null;
 
   // If not found by email, try phone lookup
   if (!user) {
     elderlyProfile = await authRepository.findElderlyProfileByPhone(identifier);
-
-    if (!elderlyProfile || !elderlyProfile.user_id) {
-      throw new Error("Invalid credentials");
+    if (elderlyProfile && elderlyProfile.user_id) {
+      user = await authRepository.findUserById(elderlyProfile.user_id);
     }
-
-    user = await authRepository.findUserById(elderlyProfile.user_id);
   }
 
-  // If somehow user still doesn't exist
+  // Account enumeration guard: even if user not found, perform dummy check
   if (!user) {
-    throw new Error("Invalid credentials");
+    await dummyPasswordCheck(password);
+    await logAuthEvent(undefined, AuthEventType.LOGIN_FAILURE, reqInfo, { identifier, reason: 'user_not_found' });
+    throw new Error(genericError);
   }
 
-  // 2️⃣ Validate password using bcrypt
+  // 2️⃣ Validate password
   const isValidPassword = await comparePassword(password, user.password_hash);
 
   if (!isValidPassword) {
-    throw new Error("Invalid credentials");
+    await logAuthEvent(user.id, AuthEventType.LOGIN_FAILURE, reqInfo, { reason: 'invalid_password' });
+    throw new Error(genericError);
   }
 
   if (!user.is_email_verified) {
@@ -242,13 +283,58 @@ const checkElderlyRecordsExist = async (data: CheckElderlyRecords) => {
   // 3️⃣ Fetch elderly profile if not found earlier
   if (!elderlyProfile) {
     elderlyProfile = await authRepository.findElderlyProfileByUserId(user.id);
-
     if (!elderlyProfile) {
       throw new Error("Elderly profile not found");
     }
   }
 
   return { user, elderlyProfile };
+}
+
+/**  Separated DB logic for nurse login  */
+const checkNurseRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip: string; userAgent: string }) => {
+  const { identifier, password } = data;
+  const genericError = "Invalid credentials";
+
+  let user = await authRepository.findUserByEmail(identifier);
+  let nurseProfile = null;
+
+  // If not found by email, try phone lookup
+  if (!user) {
+    nurseProfile = await authRepository.findNurseProfileByPhone(identifier);
+    if (nurseProfile && nurseProfile.user_id) {
+      user = await authRepository.findUserById(nurseProfile.user_id);
+    }
+  }
+
+  // Account enumeration guard
+  if (!user) {
+    await dummyPasswordCheck(password);
+    await logAuthEvent(undefined, AuthEventType.LOGIN_FAILURE, reqInfo, { identifier, reason: 'user_not_found' });
+    throw new Error(genericError);
+  }
+
+  // 2️⃣ Validate password
+  const isValidPassword = await comparePassword(password, user.password_hash);
+
+  if (!isValidPassword) {
+    await logAuthEvent(user.id, AuthEventType.LOGIN_FAILURE, reqInfo, { reason: 'invalid_password' });
+    throw new Error(genericError);
+  }
+
+  if (!user.is_email_verified) {
+    throw new Error("Email not verified. Please verify your email to login.");
+  }
+
+  // 3️⃣ Fetch nurse profile if not found earlier
+  if (!nurseProfile) {
+    nurseProfile = await authRepository.findNurseProfileByUserId(user.id);
+    if (!nurseProfile) {
+      throw new Error("Nurse profile not found");
+    }
+  }
+
+  return { user, nurseProfile };
 }
 
 /**
@@ -323,12 +409,13 @@ export const registerElderlyUser = async (
  */
 export const loginElderlyUser = async (
   identifier: string, // email OR phone
-  password: string
+  password: string,
+  reqInfo: { ip: string; userAgent: string }
 ): Promise<LoginElderlyResult> => {
   logger.info("Attempting elderly user login", { identifier });
 
   try {
-    const { user, elderlyProfile } = await checkElderlyRecordsExist({ identifier, password });
+    const { user, elderlyProfile } = await checkElderlyRecordsExist({ identifier, password }, reqInfo);
 
     if (!elderlyProfile) {
       throw new Error("Elderly profile not found");
@@ -340,6 +427,16 @@ export const loginElderlyUser = async (
       email: user.email,
       role: user.role,
     });
+
+    // Store refresh token hash
+    await RefreshToken.create({
+      user_id: user.id,
+      token_hash: hashData(tokens.refreshToken),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      device_fingerprint: reqInfo.userAgent, // Simplified fingerprint
+    });
+
+    await logAuthEvent(user.id, AuthEventType.LOGIN_SUCCESS, reqInfo);
 
     logger.info("Elderly login successful", { userId: user.id });
 
@@ -472,6 +569,17 @@ export const completePasswordReset = async (
     user.password_hash = hashedPassword;
     await user.save();
 
+    // Fetch the user's profile to get their name for the email
+    const profile = await authRepository.findElderlyProfileByUserId(user.id) || await authRepository.findNurseProfileByUserId(user.id);
+    const userName = profile ? profile.name : 'Silver Walks User';
+
+    // 5. Send success notification
+    sendPasswordResetSuccessEmail(
+      user.email,
+      userName,
+      process.env.CLIENT_URL || 'http://localhost:3000/login'
+    ).catch(err => logger.error('Failed to send password reset success email', err));
+
     // TODO: Invalidate all sessions/tokens (if applicable)
 
     logger.info("Password reset successfully", { userId: user.id });
@@ -517,6 +625,8 @@ export const registerNurse = async (
           address: data.address,
           specializations: data.specializations,
           certifications: [], // This is the old JSONB field, we might still want to keep it or leave empty
+          latitude: 0,
+          longitude: 0,
         },
         t
       );
@@ -567,5 +677,134 @@ export const registerNurse = async (
   } catch (error) {
     logger.error("Error registering nurse", error as Error);
     throw error;
+  }
+};
+
+/**
+ *  LOGIN NURSE USER
+ */
+export const loginNurse = async (
+  identifier: string, // email OR phone
+  password: string,
+  reqInfo: { ip: string; userAgent: string }
+): Promise<LoginNurseResult> => {
+  logger.info("Attempting nurse user login", { identifier });
+
+  try {
+    const { user, nurseProfile } = await checkNurseRecordsExist({ identifier, password }, reqInfo);
+
+    if (!nurseProfile) {
+      throw new Error("Nurse profile not found");
+    }
+
+    // Generate JWT tokens
+    const tokens = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
+    // Store refresh token hash
+    await RefreshToken.create({
+      user_id: user.id,
+      token_hash: hashData(tokens.refreshToken),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      device_fingerprint: reqInfo.userAgent,
+    });
+
+    await logAuthEvent(user.id, AuthEventType.LOGIN_SUCCESS, reqInfo);
+
+    logger.info("Nurse login successful", { userId: user.id });
+
+    return {
+      userId: user.id,
+      nurseProfileId: nurseProfile.id,
+      email: user.email,
+      role: user.role,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+
+  } catch (error) {
+    logger.error("Error logging in nurse user", error as Error);
+    throw error;
+  }
+};
+
+/**
+ * REFRESH TOKENS - WITH ROTATION & REUSE DETECTION
+ */
+export const refreshTokens = async (
+  refreshToken: string,
+  reqInfo: { ip: string; userAgent: string }
+): Promise<any> => {
+  try {
+    const payload = verifyRefreshToken(refreshToken);
+    const tokenHash = hashData(refreshToken);
+
+    // Find the token in DB
+    const storedToken = await RefreshToken.findOne({
+      where: { token_hash: tokenHash }
+    });
+
+    // REUSE DETECTION (FAMILY REVOCATION)
+    if (!storedToken || storedToken.is_revoked) {
+      logger.warn('Refresh token reuse detected / unknown token. Revoking family.', { userId: payload.userId });
+
+      // Revoke all tokens for this user
+      await RefreshToken.update(
+        { is_revoked: true },
+        { where: { user_id: payload.userId } }
+      );
+
+      await logAuthEvent(payload.userId, AuthEventType.TOKEN_REVOKED, reqInfo, { reason: 'reuse_detection' });
+      throw new Error('Invalid refresh token');
+    }
+
+    // Immediately rotate: delete or revoke old token
+    await storedToken.destroy();
+
+    // Generate new pair
+    const newTokens = generateTokenPair({
+      userId: payload.userId,
+      email: payload.email,
+      role: payload.role,
+    });
+
+    // Store new refresh token hash
+    await RefreshToken.create({
+      user_id: payload.userId,
+      token_hash: hashData(newTokens.refreshToken),
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      device_fingerprint: reqInfo.userAgent,
+    });
+
+    await logAuthEvent(payload.userId, AuthEventType.TOKEN_REFRESH, reqInfo);
+
+    return newTokens;
+  } catch (error) {
+    logger.error('Error refreshing tokens', error as Error);
+    throw new Error('Session expired or invalid');
+  }
+};
+
+/**
+ * LOGOUT
+ */
+export const logout = async (
+  refreshToken: string,
+  userId: string,
+  reqInfo: { ip: string; userAgent: string }
+): Promise<void> => {
+  try {
+    const tokenHash = hashData(refreshToken);
+    await RefreshToken.destroy({
+      where: { token_hash: tokenHash, user_id: userId }
+    });
+
+    await logAuthEvent(userId, AuthEventType.LOGOUT, reqInfo);
+    logger.info('User logged out', { userId });
+  } catch (error) {
+    logger.error('Error during logout', error as Error);
   }
 };

@@ -14,15 +14,8 @@ export class OtpService {
     /**
      * Generate a numeric OTP (default 6 digits)
      */
-    private static generateNumericOtp(length: number = 6): string {
-        const digits = '0123456789';
-        let otp = '';
-        for (let i = 0; i < length; i++) {
-            // secure random index
-            const randomIndex = crypto.randomInt(0, digits.length);
-            otp += digits[randomIndex];
-        }
-        return otp;
+    private static generateNumericOtp(): string {
+        return crypto.randomInt(100000, 999999).toString();
     }
 
     /**
@@ -98,34 +91,72 @@ export class OtpService {
     }
 
     /**
-     * Verify an OTP
+     * Verify an OTP with timing-safe comparison and brute-force protection
      */
     async verifyOtp(
         email: string,
-        otp: string,
+        submittedOtp: string,
         purpose: OtpPurpose
     ): Promise<boolean> {
         const record = await Otp.findOne({
             where: {
                 email,
-                otp,
                 purpose,
                 is_used: false,
                 expires_at: {
-                    [Op.gt]: new Date() // Must not be expired
+                    [Op.gt]: new Date()
                 }
             },
+            order: [['created_at', 'DESC']]
         });
 
         if (!record) {
+            // Constant time dummy comparison even if no record found
+            // Use a dummy 6-digit string
+            crypto.timingSafeEqual(Buffer.from('000000'), Buffer.from(submittedOtp.padEnd(6).substring(0, 6)));
             return false;
         }
 
-        // Mark as used
-        record.is_used = true;
-        await record.save();
+        // Increment attempt count
+        record.attempt_count += 1;
+        
+        // Timing-safe comparison
+        // Note: Buffer.from requires same lengths for timingSafeEqual
+        const recordOtpBuf = Buffer.from(record.otp);
+        const submittedOtpBuf = Buffer.from(submittedOtp.padEnd(record.otp.length).substring(0, record.otp.length));
+        
+        const isMatch = crypto.timingSafeEqual(recordOtpBuf, submittedOtpBuf);
 
-        return true;
+        if (isMatch) {
+            record.is_used = true;
+            await record.save();
+            return true;
+        }
+
+        // If no match, check if we should burn the OTP
+        if (record.attempt_count >= record.max_attempts) {
+            record.is_used = true;
+            logger.warn('OTP burned due to max attempts reached', { email, purpose });
+        }
+
+        await record.save();
+        return false;
+    }
+
+    /**
+     * Cleanup expired or used OTPs
+     */
+    async cleanup(): Promise<number> {
+        const deleted = await Otp.destroy({
+            where: {
+                [Op.or]: [
+                    { is_used: true },
+                    { expires_at: { [Op.lt]: new Date() } }
+                ]
+            }
+        });
+        logger.info('OTP cleanup completed', { deletedCount: deleted });
+        return deleted;
     }
 }
 

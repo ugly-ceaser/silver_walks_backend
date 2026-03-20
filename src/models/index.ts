@@ -18,6 +18,9 @@ import AdminAction from './AdminAction.model';
 import ActivityTracker from './ActivityTracker.model';
 import Otp from './Otp.model';
 import NurseCertification from './NurseCertification.model';
+import AvailabilityRule from './AvailabilityRule.model';
+import AvailabilitySlot from './AvailabilitySlot.model';
+import Booking from './Booking.model';
 
 // Define associations
 
@@ -53,6 +56,11 @@ User.hasMany(ActivityLog, {
 User.hasMany(AdminAction, {
   foreignKey: 'admin_id',
   as: 'adminActions',
+});
+
+User.hasMany(Booking, {
+  foreignKey: 'booked_by',
+  as: 'bookingsMade',
 });
 
 // ElderlyProfile associations
@@ -111,6 +119,12 @@ ElderlyProfile.hasMany(Payment, {
   as: 'payments',
 });
 
+ElderlyProfile.hasMany(Booking, {
+  foreignKey: 'elderly_id',
+  as: 'bookings',
+  onDelete: 'CASCADE',
+});
+
 // NurseProfile associations
 NurseProfile.belongsTo(User, {
   foreignKey: 'user_id',
@@ -152,6 +166,18 @@ NurseProfile.hasMany(WithdrawalRequest, {
 NurseProfile.hasMany(NurseCertification, {
   foreignKey: 'nurse_profile_id',
   as: 'certifications_list',
+  onDelete: 'CASCADE',
+});
+
+NurseProfile.hasMany(AvailabilityRule, {
+  foreignKey: 'nurse_id',
+  as: 'availabilityRules',
+  onDelete: 'CASCADE',
+});
+
+NurseProfile.hasMany(AvailabilitySlot, {
+  foreignKey: 'nurse_id',
+  as: 'availabilitySlots',
   onDelete: 'CASCADE',
 });
 
@@ -339,6 +365,51 @@ User.hasMany(ActivityTracker, {
   as: 'activityTrackers',
 });
 
+// AvailabilityRule associations
+AvailabilityRule.belongsTo(NurseProfile, {
+  foreignKey: 'nurse_id',
+  as: 'nurse',
+});
+
+AvailabilityRule.hasMany(AvailabilitySlot, {
+  foreignKey: 'rule_id',
+  as: 'slots',
+  onDelete: 'SET NULL',
+});
+
+// AvailabilitySlot associations
+AvailabilitySlot.belongsTo(NurseProfile, {
+  foreignKey: 'nurse_id',
+  as: 'nurse',
+});
+
+AvailabilitySlot.belongsTo(AvailabilityRule, {
+  foreignKey: 'rule_id',
+  as: 'rule',
+});
+
+AvailabilitySlot.hasOne(Booking, {
+  foreignKey: 'slot_id',
+  as: 'booking',
+  onDelete: 'CASCADE',
+});
+
+// Booking associations
+Booking.belongsTo(AvailabilitySlot, {
+  foreignKey: 'slot_id',
+  as: 'slot',
+});
+
+Booking.belongsTo(ElderlyProfile, {
+  foreignKey: 'elderly_id',
+  as: 'elderly',
+});
+
+Booking.belongsTo(User, {
+  foreignKey: 'booked_by',
+  as: 'booker',
+});
+
 export {
   User,
   NurseProfile,
@@ -382,4 +453,7 @@ export default {
   ActivityTracker,
   Otp,
   NurseCertification,
+  AvailabilityRule,
+  AvailabilitySlot,
+  Booking
 };

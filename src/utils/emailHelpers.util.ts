@@ -45,6 +45,25 @@ export const sendPasswordResetEmail = async (
 };
 
 /**
+ * Send password reset success email
+ */
+export const sendPasswordResetSuccessEmail = async (
+  email: string,
+  name: string,
+  loginUrl: string = 'http://localhost:3000/login'
+): Promise<void> => {
+  await sendMailWithLayout({
+    to: email,
+    subject: 'Password Reset Successful ✅',
+    template: templates.passwordResetSuccessTemplate,
+    data: {
+      name,
+      loginUrl,
+    },
+  });
+};
+
+/**
  * Send walk scheduled notification
  */
 export const sendWalkScheduledEmail = async (

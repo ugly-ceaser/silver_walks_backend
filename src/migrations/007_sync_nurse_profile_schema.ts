@@ -35,12 +35,15 @@ export default {
         }
 
         // Change certifications to JSONB if it's currently an array of strings
-        if (tableInfo['certifications'] && tableInfo['certifications'].type.includes('ARRAY')) {
-            // In PostgreSQL, changing from ARRAY to JSONB requires dropping default first if it exists
-            await queryInterface.sequelize.query('ALTER TABLE nurse_profiles ALTER COLUMN certifications DROP DEFAULT;');
-            await queryInterface.sequelize.query('ALTER TABLE nurse_profiles ALTER COLUMN certifications TYPE JSONB USING to_jsonb(certifications);');
-            await queryInterface.sequelize.query("ALTER TABLE nurse_profiles ALTER COLUMN certifications SET DEFAULT '[]'::jsonb;");
-        } else if (!tableInfo['certifications']) {
+        if (tableInfo['certifications']) {
+            const certType = (tableInfo['certifications'] as any).type || '';
+            if (certType.includes('ARRAY') || certType === 'CHARACTER VARYING') {
+                // In PostgreSQL, changing from ARRAY or VARCHAR to JSONB requires precision
+                await queryInterface.sequelize.query('ALTER TABLE nurse_profiles ALTER COLUMN certifications DROP DEFAULT;');
+                await queryInterface.sequelize.query('ALTER TABLE nurse_profiles ALTER COLUMN certifications TYPE JSONB USING to_jsonb(certifications);');
+                await queryInterface.sequelize.query("ALTER TABLE nurse_profiles ALTER COLUMN certifications SET DEFAULT '[]'::jsonb;");
+            }
+        } else {
             await queryInterface.addColumn('nurse_profiles', 'certifications', {
                 type: DataTypes.JSONB,
                 allowNull: false,
@@ -48,7 +51,7 @@ export default {
             });
         }
 
-        // Add points_balance if missing (some models might have it)
+        // Add points_balance if missing
         if (!tableInfo['points_balance']) {
             await queryInterface.addColumn('nurse_profiles', 'points_balance', {
                 type: DataTypes.INTEGER,

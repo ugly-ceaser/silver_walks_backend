@@ -30,13 +30,14 @@ import {
 
 import { Request, Response, NextFunction } from 'express';
 import * as authService from './auth.service';
-import { createdResponse } from '../../utils/response.util';
+import { createdResponse, successResponse } from '../../utils/response.util';
+import { config } from '../../config/env.config';
 
 /**
  * Register Elderly User (3-step flow)
  */
 export const registerElderlyUser = async (req: Request, res: Response, next: NextFunction) => {
-  console.log("Registering elderly user:", req.body);
+
   try {
 
     const result = await authService.registerElderlyUser(req.body);
@@ -49,8 +50,22 @@ export const registerElderlyUser = async (req: Request, res: Response, next: Nex
 // Login Elderly User
 export const loginElderlyUser = async (req: Request, res: Response, next: NextFunction) => {
   const { identifier, password } = req.body;
+  const reqInfo = {
+    ip: req.ip || 'unknown',
+    userAgent: req.headers['user-agent'] || 'unknown'
+  };
+
   try {
-    const result = await authService.loginElderlyUser(identifier, password);
+    const result = await authService.loginElderlyUser(identifier, password, reqInfo);
+    
+    // Set refresh token cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
     return createdResponse(res, result, 'Elderly user logged in successfully.', 200);
   } catch (error) {
     return next(error);
@@ -101,10 +116,91 @@ export const resetPassword = async (req: Request, res: Response, next: NextFunct
  * Register Nurse User
  */
 export const registerNurse = async (req: Request, res: Response, next: NextFunction) => {
-  console.log("Registering nurse:", req.body);
+
   try {
     const result = await authService.registerNurse(req.body);
     return createdResponse(res, result, 'Nurse registered successfully. Please check your email for verification.');
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Login Nurse User
+ */
+export const loginNurse = async (req: Request, res: Response, next: NextFunction) => {
+  const { identifier, password } = req.body;
+  const reqInfo = {
+    ip: req.ip || 'unknown',
+    userAgent: req.headers['user-agent'] || 'unknown'
+  };
+
+  try {
+    const result = await authService.loginNurse(identifier, password, reqInfo);
+    
+    // Set refresh token cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    });
+
+    return createdResponse(res, result, 'Nurse logged in successfully.', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Refresh Tokens
+ */
+export const refreshTokens = async (req: Request, res: Response, next: NextFunction) => {
+  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const reqInfo = {
+    ip: req.ip || 'unknown',
+    userAgent: req.headers['user-agent'] || 'unknown'
+  };
+
+  try {
+    if (!refreshToken) {
+      throw new Error('Refresh token required');
+    }
+
+    const result = await authService.refreshTokens(refreshToken, reqInfo);
+
+    // Set new refresh token cookie
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: config.env === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+
+    return createdResponse(res, result, 'Tokens refreshed successfully.', 200);
+  } catch (error) {
+    return next(error);
+  }
+};
+
+/**
+ * Logout
+ */
+export const logout = async (req: Request, res: Response, next: NextFunction) => {
+  const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+  const userId = (req as any).user?.userId;
+  const reqInfo = {
+    ip: req.ip || 'unknown',
+    userAgent: req.headers['user-agent'] || 'unknown'
+  };
+
+  try {
+    if (refreshToken && userId) {
+      await authService.logout(refreshToken, userId, reqInfo);
+    }
+    
+    res.clearCookie('refreshToken');
+    return successResponse(res, null, 'Logged out successfully');
   } catch (error) {
     return next(error);
   }

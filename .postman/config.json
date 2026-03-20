@@ -1,0 +1,16 @@
+{
+  "workspace": {
+    "id": "4bed97c1-f3be-4ee3-a318-80c2f3c7f7ba"
+  },
+  "entities": {
+    "environments": [],
+    "flows": [],
+    "globals": [],
+    "mocks": [],
+    "specs": [],
+    "collections": [
+      "..\\src\\docs\\postman\\auth_flow_collection.json",
+      "..\\src\\docs\\postman\\walks_module_collection.json"
+    ]
+  }
+}
