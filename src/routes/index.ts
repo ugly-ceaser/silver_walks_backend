@@ -105,4 +105,6 @@ router.use('/emergency-alerts', emergencyAlertRoutes);
 router.use('/ratings', ratingsRoutes);
 router.use('/activities', activityRoutes);
 
+const silvr =true;  
+
 export default router;
