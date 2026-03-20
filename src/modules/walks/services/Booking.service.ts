@@ -1,9 +1,15 @@
 import { sequelize } from '../../../config/database.config';
+import { Transaction } from 'sequelize';
 import AvailabilitySlot, { SlotStatus } from '../../../models/AvailabilitySlot.model';
 import Booking, { BookingStatus } from '../../../models/Booking.model';
+import NurseProfile from '../../../models/NurseProfile.model';
+import ElderlyProfile from '../../../models/ElderlyProfile.model';
 import WalkSession, { WalkSessionStatus } from '../../../models/WalkSession.model';
 import { ConflictError, NotFoundError, ValidationError } from '../../../utils/error.util';
 import { logger } from '../../../utils/logger.util';
+import appEvents from '../../../utils/event-emitter.util';
+import { EVENTS, CANCEL_REOPEN_THRESHOLD_HRS } from '../../../constants';
+import { differenceInHours } from 'date-fns';
 
 export const BookingService = {
     /**
@@ -14,14 +20,18 @@ export const BookingService = {
         elderlyId: string;
         bookedBy: string;
         notes?: string;
-    }): Promise<Booking> {
+    }, transaction?: Transaction): Promise<{ booking: Booking; walkSession: WalkSession }> {
         const { slotId, elderlyId, bookedBy, notes } = params;
 
-        const t = await sequelize.transaction();
+        const isExternalTransaction = !!transaction;
+        const t = transaction || await sequelize.transaction();
 
         try {
             // 1. Fetch the slot
-            const slot = await AvailabilitySlot.findByPk(slotId, { transaction: t });
+            const slot = await AvailabilitySlot.findByPk(slotId, {
+                transaction: t,
+                include: [{ model: NurseProfile, as: 'nurse' }]
+            });
             if (!slot) {
                 throw new NotFoundError('Availability slot not found');
             }
@@ -39,14 +49,13 @@ export const BookingService = {
                 {
                     where: {
                         id: slotId,
-                        version: slot.version // Hard guard: must match the version we read
+                        version: slot.version
                     },
                     transaction: t
                 }
             );
 
             if (affectedRows === 0) {
-                // Version changed since we read it -> double booking attempt
                 throw new ConflictError('This slot was just booked by someone else. Please try another slot.');
             }
 
@@ -59,8 +68,8 @@ export const BookingService = {
                 notes
             }, { transaction: t });
 
-            // 4. Create WalkSession record (for compatibility with existing flow)
-            await WalkSession.create({
+            // 4. Create WalkSession record
+            const walkSession = await WalkSession.create({
                 elderly_id: elderlyId,
                 nurse_id: slot.nurse_id,
                 scheduled_date: new Date(slot.date),
@@ -69,11 +78,29 @@ export const BookingService = {
                 status: WalkSessionStatus.SCHEDULED
             }, { transaction: t });
 
-            await t.commit();
+            if (!isExternalTransaction) await t.commit();
             logger.info(`Booking ${booking.id} created for slot ${slotId}`);
-            return booking;
+
+            // Emit booking.confirmed event
+            appEvents.emit(EVENTS.BOOKING_CONFIRMED, {
+                bookingId: booking.id,
+                slotId,
+                elderlyId,
+                nurseId: slot.nurse_id,
+            });
+
+            // Re-fetch with associations for formatWalkSession
+            const sessionWithAssociations = await WalkSession.findByPk(walkSession.id, {
+                transaction: isExternalTransaction ? t : undefined, // If external, session is still in t
+                include: [
+                    { model: NurseProfile, as: 'nurseProfile' },
+                    { model: ElderlyProfile, as: 'elderlyProfile' }
+                ]
+            });
+
+            return { booking, walkSession: sessionWithAssociations || walkSession };
         } catch (error) {
-            await t.rollback();
+            if (!isExternalTransaction) await t.rollback();
             throw error;
         }
     },
@@ -81,10 +108,18 @@ export const BookingService = {
     /**
      * Cancel a booking
      */
-    async cancelBooking(bookingId: string, reason: string): Promise<void> {
+    async cancelBooking(params: {
+        bookingId: string;
+        reason: string;
+        cancelledBy: 'nurse' | 'elderly' | 'admin';
+    }): Promise<void> {
+        const { bookingId, reason, cancelledBy } = params;
         const t = await sequelize.transaction();
         try {
-            const booking = await Booking.findByPk(bookingId, { transaction: t });
+            const booking = await Booking.findByPk(bookingId, {
+                transaction: t,
+                include: [{ model: AvailabilitySlot, as: 'slot' }]
+            });
             if (!booking) throw new NotFoundError('Booking not found');
 
             if (booking.status !== BookingStatus.CONFIRMED) {
@@ -97,16 +132,51 @@ export const BookingService = {
             booking.cancel_reason = reason;
             await booking.save({ transaction: t });
 
-            // Reopen the slot
+            // Reopen or Permanently close the slot based on policy
+            let newSlotStatus = SlotStatus.OPEN;
+
+            if (cancelledBy === 'elderly') {
+                // If cancelled by elderly < 2 hours before, close the slot permanently
+                const now = new Date();
+                const slotDateTime = new Date(`${booking.slot?.date} ${booking.slot?.start_time}`);
+                const hoursToStart = differenceInHours(slotDateTime, now);
+
+                if (hoursToStart < CANCEL_REOPEN_THRESHOLD_HRS) {
+                    newSlotStatus = SlotStatus.CANCELLED;
+                    logger.info(`Slot ${booking.slot_id} permanently closed due to late cancellation by elderly.`);
+                }
+            }
+
             await AvailabilitySlot.update(
-                { status: SlotStatus.OPEN },
+                { status: newSlotStatus },
                 { where: { id: booking.slot_id }, transaction: t }
             );
 
-            // Optionally: Update WalkSession status to CANCELLED
-            // This would require finding the walk session linked to this booking/slot
+            // Update WalkSession status to CANCELLED
+            await WalkSession.update(
+                {
+                    status: WalkSessionStatus.CANCELLED,
+                    cancellation_reason: reason
+                },
+                {
+                    where: {
+                        elderly_id: booking.elderly_id,
+                        scheduled_date: booking.slot?.date,
+                        scheduled_time: booking.slot?.start_time
+                    },
+                    transaction: t
+                }
+            );
 
             await t.commit();
+
+            // Emit booking.cancelled event
+            appEvents.emit(EVENTS.BOOKING_CANCELLED, {
+                bookingId,
+                slotId: booking.slot_id,
+                reason,
+                cancelledBy
+            });
         } catch (error) {
             await t.rollback();
             throw error;

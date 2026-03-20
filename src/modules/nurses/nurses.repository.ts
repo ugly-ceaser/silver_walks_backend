@@ -150,6 +150,13 @@ export class NursesRepository {
             transaction: t
         });
     }
+
+    /**
+     * Find Elderly Profile by ID
+     */
+    async findElderlyProfileById(id: string): Promise<ElderlyProfile | null> {
+        return ElderlyProfile.findByPk(id);
+    }
 }
 
 export const nursesRepository = new NursesRepository();

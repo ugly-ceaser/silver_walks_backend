@@ -143,3 +143,17 @@ export const deleteAvailabilityRule = async (req: Request, res: Response, next: 
         next(error);
     }
 };
+
+/**
+ * PATCH /api/v1/nurses/me/device-token
+ */
+export const updateDeviceToken = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req.user as any).userId;
+        const { token } = req.body;
+        await nursesService.updateDeviceToken(userId, token);
+        return createdResponse(res, null, 'Device token updated successfully', 200);
+    } catch (error) {
+        next(error);
+    }
+};

@@ -6,7 +6,8 @@ import {
     validateUpdateProfile,
     validateUpdateAvailability,
     validateAddCertification,
-    validateCreateAvailabilityRule
+    validateCreateAvailabilityRule,
+    validateUpdateDeviceToken
 } from './nurses.schemaValidator';
 
 const nurses = Router();
@@ -28,5 +29,6 @@ nurses.delete('/certifications/:id', requireNurse, nursesController.removeCertif
 nurses.get('/availability/rules', requireNurse, nursesController.getAvailabilityRules);
 nurses.post('/availability/rules', requireNurse, validateCreateAvailabilityRule, nursesController.createAvailabilityRule);
 nurses.delete('/availability/rules/:id', requireNurse, nursesController.deleteAvailabilityRule);
+nurses.patch('/me/device-token', requireNurse, validateUpdateDeviceToken, nursesController.updateDeviceToken);
 
 export default nurses;

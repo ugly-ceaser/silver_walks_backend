@@ -14,11 +14,13 @@ interface OtpAttributes {
     purpose: OtpPurpose;
     expires_at: Date;
     is_used: boolean;
+    attempt_count: number;
+    max_attempts: number;
     created_at: Date;
     updated_at: Date;
 }
 
-interface OtpCreationAttributes extends Optional<OtpAttributes, 'id' | 'is_used' | 'created_at' | 'updated_at'> { }
+interface OtpCreationAttributes extends Optional<OtpAttributes, 'id' | 'is_used' | 'attempt_count' | 'max_attempts' | 'created_at' | 'updated_at'> { }
 
 class Otp extends Model<OtpAttributes, OtpCreationAttributes> implements OtpAttributes {
     public id!: string;
@@ -27,6 +29,8 @@ class Otp extends Model<OtpAttributes, OtpCreationAttributes> implements OtpAttr
     public purpose!: OtpPurpose;
     public expires_at!: Date;
     public is_used!: boolean;
+    public attempt_count!: number;
+    public max_attempts!: number;
     public created_at!: Date;
     public updated_at!: Date;
 }
@@ -61,6 +65,16 @@ Otp.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false,
+        },
+        attempt_count: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0,
+        },
+        max_attempts: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 5,
         },
         created_at: {
             type: DataTypes.DATE,

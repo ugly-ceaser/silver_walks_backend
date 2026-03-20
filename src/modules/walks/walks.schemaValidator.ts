@@ -1,54 +1,55 @@
-import Joi from 'joi';
-import { Request, Response, NextFunction } from 'express';
-import { validationErrorResponse } from '../../utils/response.util';
+import { validators, ValidationRule } from '../../utils/validation.util';
+import { SLOT_DURATIONS } from '../../constants';
 
 /**
- * Schema for creating walk sessions (supports multiple dates)
+ * Walks Module Validators (Custom Format)
  */
-export const createWalkSchema = Joi.object({
-    scheduledDates: Joi.array().items(Joi.date().iso()).min(1).required(),
-    scheduledTime: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).required(),
-    duration: Joi.number().integer().min(15).max(120).required(),
-    matchingMode: Joi.string().valid('auto', 'manual').required(),
-    nurseId: Joi.string().uuid().when('matchingMode', {
-        is: 'manual',
-        then: Joi.required(),
-        otherwise: Joi.optional()
-    })
-});
+export const walksSchema = {
+    // POST /api/v1/walks
+    createWalk: {
+        body: [
+            { field: 'date', rules: [{ validator: validators.required, message: 'Date is required' }, { validator: (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v), message: 'Invalid date format (YYYY-MM-DD)' }] },
+            { field: 'time', rules: [{ validator: validators.required, message: 'Time is required' }, { validator: (v: string) => /^\d{2}:\d{2}$/.test(v), message: 'Invalid time format (HH:mm)' }] },
+            { field: 'duration', rules: [{ validator: validators.required, message: 'Duration is required' }, { validator: (v: any) => (SLOT_DURATIONS as unknown as number[]).includes(Number(v)), message: 'Invalid duration' }] }
+        ]
+    },
 
-/**
- * Schema for booking via a specific slot
- */
-export const createBookingSchema = Joi.object({
-    slotId: Joi.string().uuid().required(),
-    notes: Joi.string().max(500).optional()
-});
+    // POST /api/v1/walks/book
+    createBooking: {
+        body: [
+            { field: 'slot_id', rules: [{ validator: validators.required, message: 'Slot ID is required' }, { validator: validators.isUUID, message: 'Invalid Slot ID' }] },
+            { field: 'notes', rules: [{ validator: (v: any) => !v || v.length <= 500, message: 'Notes too long' }] }
+        ]
+    },
 
-/**
- * Middleware factory for validation
- */
-const validate = (schema: Joi.ObjectSchema) => {
-    return (req: Request, res: Response, next: NextFunction): void => {
-        const { error, value } = schema.validate(req.body, {
-            abortEarly: false,
-            stripUnknown: true,
-        });
+    // POST /walks/:id/start
+    startWalk: {
+        body: [] as ValidationRule[]
+    },
 
-        if (error) {
-            const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
-                field: detail.path.join('.'),
-                message: detail.message,
-            }));
+    // PATCH /walks/:id/metrics
+    updateMetrics: {
+        body: [
+            { field: 'steps_count', rules: [{ validator: validators.required, message: 'Steps count is required' }, { validator: validators.isInteger, message: 'Must be an integer' }] },
+            { field: 'distance_meters', rules: [{ validator: validators.required, message: 'Distance is required' }, { validator: validators.isPositive, message: 'Must be positive' }] },
+            { field: 'latitude', rules: [{ validator: validators.required, message: 'Latitude is required' }] },
+            { field: 'longitude', rules: [{ validator: validators.required, message: 'Longitude is required' }] }
+        ]
+    },
 
-            validationErrorResponse(res, errors, 'Validation failed');
-            return;
-        }
+    // POST /walks/:id/complete
+    completeWalk: {
+        body: [
+            { field: 'notes', rules: [{ validator: (v: any) => !v || v.length <= 500, message: 'Notes too long' }] }
+        ]
+    },
 
-        req.body = value;
-        next();
-    };
+    // GET /walks/schedule/daily and weekly
+    getSchedule: {
+        query: [
+            { field: 'date', rules: [{ validator: validators.required, message: 'Date is required' }, { validator: (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v), message: 'Invalid date format' }] },
+            { field: 'nurse_id', rules: [{ validator: (v: any) => !v || validators.isUUID(v), message: 'Invalid Nurse ID' }] },
+            { field: 'elderly_id', rules: [{ validator: (v: any) => !v || validators.isUUID(v), message: 'Invalid Elderly ID' }] }
+        ]
+    }
 };
-
-export const validateCreateWalk = validate(createWalkSchema);
-export const validateCreateBooking = validate(createBookingSchema);

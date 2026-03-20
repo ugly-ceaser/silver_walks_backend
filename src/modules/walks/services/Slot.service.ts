@@ -11,7 +11,9 @@ export const SlotService = {
         startDate: string;
         endDate: string;
         minDuration?: number;
-    }): Promise<AvailabilitySlot[]> {
+        limit?: number;
+        offset?: number;
+    }): Promise<{ rows: AvailabilitySlot[]; count: number }> {
         const where: any = {
             status: SlotStatus.OPEN,
             date: {
@@ -27,10 +29,13 @@ export const SlotService = {
             where.duration_mins = { [Op.gte]: params.minDuration };
         }
 
-        return await AvailabilitySlot.findAll({
+        return await AvailabilitySlot.findAndCountAll({
             where,
             include: [{ model: NurseProfile, as: 'nurse' }],
-            order: [['date', 'ASC'], ['start_time', 'ASC']]
+            order: [['date', 'ASC'], ['start_time', 'ASC']],
+            limit: params.limit,
+            offset: params.offset,
+            distinct: true
         });
     },
 

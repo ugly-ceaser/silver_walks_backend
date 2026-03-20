@@ -11,7 +11,9 @@ export enum UserStatus {
   PENDING = 'pending',
   ACTIVE = 'active',
   INACTIVE = 'inactive',
-  SUSPENDED = 'suspended'
+  SUSPENDED = 'suspended',
+  REJECTED = 'rejected',
+  DEACTIVATED = 'deactivated'
 }
 
 interface UserAttributes {

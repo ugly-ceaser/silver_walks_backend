@@ -135,14 +135,43 @@ export const manageNurseCertification = async (userId: string, action: 'add' | '
 /**
  * Availability Rule Management
  */
-export const createAvailabilityRule = async (userId: string, data: Partial<AvailabilityRuleCreationAttributes>) => {
+export const createAvailabilityRule = async (userId: string, data: any) => {
     const nurse = await nursesRepository.findNurseByUserId(userId);
     if (!nurse) throw new NotFoundError('Nurse profile not found');
 
-    return await AvailabilityRuleService.createRule({
-        ...data,
-        nurse_id: nurse.id
-    } as AvailabilityRuleCreationAttributes);
+    const {
+        days_of_week,
+        day_of_week,
+        start_times,
+        start_time,
+        durations_mins,
+        duration_mins,
+        ...rest
+    } = data;
+
+    // Normalize inputs to arrays
+    const days = days_of_week || (day_of_week !== undefined ? [day_of_week] : [null]);
+    const times = start_times || (start_time ? [start_time] : []);
+    const durations = durations_mins || (duration_mins ? [duration_mins] : []);
+
+    const createdRules = [];
+
+    for (const day of days) {
+        for (const time of times) {
+            for (const duration of durations) {
+                const rule = await AvailabilityRuleService.createRule({
+                    ...rest,
+                    nurse_id: nurse.id,
+                    day_of_week: day,
+                    start_time: time,
+                    duration_mins: duration
+                });
+                createdRules.push(rule);
+            }
+        }
+    }
+
+    return createdRules;
 };
 
 export const getAvailabilityRules = async (userId: string) => {
@@ -157,4 +186,17 @@ export const deleteAvailabilityRule = async (userId: string, ruleId: string) => 
     if (!nurse) throw new NotFoundError('Nurse profile not found');
 
     return await AvailabilityRuleService.deleteRule(ruleId, nurse.id);
+};
+
+/**
+ * Update nurse device token for push notifications
+ */
+export const updateDeviceToken = async (userId: string, token: string) => {
+    const nurse = await nursesRepository.findNurseByUserId(userId);
+    if (!nurse) {
+        throw new NotFoundError('Nurse profile not found');
+    }
+
+    await nursesRepository.updateProfile(nurse.id, { device_token: token });
+    return { success: true };
 };

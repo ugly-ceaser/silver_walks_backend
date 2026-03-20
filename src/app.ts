@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 import { config } from './config/env.config';
 import { requestLogger } from './middlewares/logger.middleware';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
@@ -9,6 +10,7 @@ import { apiRateLimiter } from './middlewares/rateLimit.middleware';
 import { responseInterceptor } from './middlewares/responseInterceptor.middleware';
 import { connectDatabase, migrateDatabase } from './config/database.config';
 import { logger } from './utils/logger.util';
+import { initJobs } from './jobs';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger.config';
 
@@ -43,6 +45,9 @@ export const createApp = async (): Promise<Application> => {
 
   // Compression middleware
   app.use(compression());
+
+  // Cookie parser middleware
+  app.use(cookieParser());
 
   // Body parsing middleware
   app.use(express.json({ limit: '10mb' }));
@@ -105,6 +110,9 @@ export const initializeApp = async (): Promise<void> => {
     // Run database migrations (create tables if they don't exist)
     // Migrations will automatically run on startup and skip already executed ones
     await migrateDatabase();
+
+    // Initialize background jobs
+    initJobs();
 
     logger.info('Application initialized successfully');
   } catch (error) {

@@ -17,6 +17,13 @@ export const updateNurseProfileSchema = Joi.object({
 });
 
 /**
+ * Schema for updating device token
+ */
+export const updateDeviceTokenSchema = Joi.object({
+    token: Joi.string().trim().max(512).required()
+});
+
+/**
  * Schema for updating nurse availability
  */
 export const updateAvailabilitySchema = Joi.object({
@@ -42,16 +49,23 @@ export const addCertificationSchema = Joi.object({
  */
 export const createAvailabilityRuleSchema = Joi.object({
     recurrence_type: Joi.string().valid('WEEKLY', 'DAILY', 'ONCE').required(),
-    day_of_week: Joi.number().integer().min(0).max(6).when('recurrence_type', {
-        is: 'WEEKLY',
-        then: Joi.required(),
-        otherwise: Joi.optional()
-    }),
-    start_time: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).required(),
-    duration_mins: Joi.number().valid(30, 45, 60).required(),
+    day_of_week: Joi.number().integer().min(0).max(6).optional(),
+    days_of_week: Joi.array().items(Joi.number().integer().min(0).max(6)).optional(),
+    start_time: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).optional(),
+    start_times: Joi.array().items(Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/)).optional(),
+    duration_mins: Joi.number().valid(30, 45, 60).optional(),
+    durations_mins: Joi.array().items(Joi.number().valid(30, 45, 60)).optional(),
     effective_from: Joi.date().iso().required(),
     effective_until: Joi.date().iso().allow(null).optional()
-});
+}).or('start_time', 'start_times')
+    .or('duration_mins', 'durations_mins')
+    .when(Joi.object({ recurrence_type: 'WEEKLY' }).unknown(), {
+        then: Joi.object().or('day_of_week', 'days_of_week'),
+        otherwise: Joi.object({
+            day_of_week: Joi.forbidden(),
+            days_of_week: Joi.forbidden()
+        })
+    });
 
 /**
  * Middleware factory for validation
@@ -82,3 +96,4 @@ export const validateUpdateProfile = validate(updateNurseProfileSchema);
 export const validateUpdateAvailability = validate(updateAvailabilitySchema);
 export const validateAddCertification = validate(addCertificationSchema);
 export const validateCreateAvailabilityRule = validate(createAvailabilityRuleSchema);
+export const validateUpdateDeviceToken = validate(updateDeviceTokenSchema);

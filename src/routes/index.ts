@@ -1,7 +1,11 @@
 import { Router } from 'express';
 import authRoutes from '../modules/auth/auth.routes';
-import walksRoutes from '../modules/walks/walks.routes';
-import nursesRoutes from '../modules/nurses/nurses.routes';
+import walkRoutes from '../modules/walks/walks.routes';
+import adminRoutes from '../modules/admin/admin.routes';
+import healthProfileRoutes from '../modules/health-profiles/health-profiles.routes';
+import emergencyContactRoutes from '../modules/emergency-contacts/emergency-contacts.routes';
+import nurseRoutes from '../modules/nurses/nurses.routes';
+import elderlyRoutes from '../modules/elderly/elderly.routes';
 
 const router = Router();
 
@@ -86,8 +90,11 @@ router.get('/health', (req, res) => {
 
 
 router.use('/auth', authRoutes);
-router.use('/walks', walksRoutes);
-router.use('/nurses', nursesRoutes);
+router.use('/walks', walkRoutes);
+router.use('/admin', adminRoutes);
+router.use('/health-profiles', healthProfileRoutes);
+router.use('/emergency-contacts', emergencyContactRoutes);
+router.use('/nurses', nurseRoutes);
+router.use('/elderly', elderlyRoutes);
 
 export default router;
-
