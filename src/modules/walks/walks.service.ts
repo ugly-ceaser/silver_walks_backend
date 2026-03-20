@@ -643,6 +643,9 @@ export const completeWalk = async (sessionId: string, nurseId: string, notes?: s
             await booking.update({ status: 'COMPLETED' as any }, { transaction: t });
         }
 
+        // Fetch elderly user_id for notifications
+        const elderly = await ElderlyProfile.findByPk(session.elderly_id, { transaction: t });
+        
         await t.commit();
 
         // Emit walk.completed event with guaranteed payload shape
@@ -651,6 +654,7 @@ export const completeWalk = async (sessionId: string, nurseId: string, notes?: s
             bookingId: booking?.id || 'manual-match',
             nurseId: session.nurse_id,
             elderlyId: session.elderly_id,
+            elderlyUserId: elderly?.user_id,
             actualDurationMins: actualDurationMinutes,
             distanceMeters: session.distance_meters || 0,
             stepsCount: session.steps_count || 0,

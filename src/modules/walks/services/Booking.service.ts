@@ -10,6 +10,7 @@ import { logger } from '../../../utils/logger.util';
 import appEvents from '../../../utils/event-emitter.util';
 import { EVENTS, CANCEL_REOPEN_THRESHOLD_HRS } from '../../../constants';
 import { differenceInHours } from 'date-fns';
+import { ratingsService } from '../../ratings/ratings.service';
 
 export const BookingService = {
     /**
@@ -22,6 +23,12 @@ export const BookingService = {
         notes?: string;
     }, transaction?: Transaction): Promise<{ booking: Booking; walkSession: WalkSession }> {
         const { slotId, elderlyId, bookedBy, notes } = params;
+
+        // 0. Ratings Gate: Check for pending ratings
+        const hasPending = await ratingsService.hasActivePendingRatings(elderlyId);
+        if (hasPending) {
+            throw new ValidationError('You have a pending rating from a previous walk. Please complete it before making a new booking.');
+        }
 
         const isExternalTransaction = !!transaction;
         const t = transaction || await sequelize.transaction();

@@ -17,6 +17,13 @@ export enum NotificationPriority {
   URGENT = 'urgent'
 }
 
+export enum NotificationChannel {
+  IN_APP = 'in_app',
+  EMAIL = 'email',
+  SMS = 'sms',
+  PUSH = 'push'
+}
+
 interface NotificationAttributes {
   id: string;
   user_id: string;
@@ -24,12 +31,14 @@ interface NotificationAttributes {
   title: string;
   message: string;
   priority: NotificationPriority;
+  channel: NotificationChannel;
   is_read: boolean;
   action_url?: string;
+  sent_at?: Date;
   created_at: Date;
 }
 
-interface NotificationCreationAttributes extends Optional<NotificationAttributes, 'id' | 'created_at' | 'is_read' | 'action_url' | 'priority'> {}
+interface NotificationCreationAttributes extends Optional<NotificationAttributes, 'id' | 'created_at' | 'is_read' | 'action_url' | 'priority' | 'sent_at'> {}
 
 class Notification extends Model<NotificationAttributes, NotificationCreationAttributes> implements NotificationAttributes {
   public id!: string;
@@ -38,8 +47,10 @@ class Notification extends Model<NotificationAttributes, NotificationCreationAtt
   public title!: string;
   public message!: string;
   public priority!: NotificationPriority;
+  public channel!: NotificationChannel;
   public is_read!: boolean;
   public action_url?: string;
+  public sent_at?: Date;
   public created_at!: Date;
 }
 
@@ -76,6 +87,11 @@ Notification.init(
       allowNull: false,
       defaultValue: NotificationPriority.MEDIUM,
     },
+    channel: {
+      type: DataTypes.ENUM(...Object.values(NotificationChannel)),
+      allowNull: false,
+      defaultValue: NotificationChannel.IN_APP,
+    },
     is_read: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
@@ -83,6 +99,10 @@ Notification.init(
     },
     action_url: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    sent_at: {
+      type: DataTypes.DATE,
       allowNull: true,
     },
     created_at: {

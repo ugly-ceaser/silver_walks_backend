@@ -63,7 +63,7 @@ class NurseProfile extends Model<NurseProfileAttributes, NurseProfileCreationAtt
   public address!: string;
   public bio?: string;
   public rating!: number;
-  public total_walks!: number;
+  public total_walks_completed!: number;
   public points_earned!: number;
   public points_withdrawn!: number;
   public points_balance!: number;
@@ -145,7 +145,7 @@ NurseProfile.init(
       allowNull: false,
       defaultValue: 0.0,
     },
-    total_walks: {
+    total_walks_completed: {
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
