@@ -6,6 +6,10 @@ import healthProfileRoutes from '../modules/health-profiles/health-profiles.rout
 import emergencyContactRoutes from '../modules/emergency-contacts/emergency-contacts.routes';
 import nurseRoutes from '../modules/nurses/nurses.routes';
 import elderlyRoutes from '../modules/elderly/elderly.routes';
+import notificationRoutes from '../modules/notifications/notifications.routes';
+import emergencyAlertRoutes from '../modules/emergency-alerts/emergency-alerts.routes';
+import ratingsRoutes from '../modules/ratings/ratings.routes';
+import activityRoutes from '../modules/activities/activities.routes';
 
 const router = Router();
 
@@ -96,5 +100,11 @@ router.use('/health-profiles', healthProfileRoutes);
 router.use('/emergency-contacts', emergencyContactRoutes);
 router.use('/nurses', nurseRoutes);
 router.use('/elderly', elderlyRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/emergency-alerts', emergencyAlertRoutes);
+router.use('/ratings', ratingsRoutes);
+router.use('/activities', activityRoutes);
+
+const silvr =true;  
 
 export default router;

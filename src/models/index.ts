@@ -21,6 +21,8 @@ import NurseCertification from './NurseCertification.model';
 import AvailabilityRule from './AvailabilityRule.model';
 import AvailabilitySlot from './AvailabilitySlot.model';
 import Booking from './Booking.model';
+import Rating from './Rating.model';
+import PendingRating from './PendingRating.model';
 
 // Define associations
 
@@ -125,6 +127,16 @@ ElderlyProfile.hasMany(Booking, {
   onDelete: 'CASCADE',
 });
 
+ElderlyProfile.hasMany(Rating, {
+  foreignKey: 'elderly_id',
+  as: 'ratingsGiven',
+});
+
+ElderlyProfile.hasMany(PendingRating, {
+  foreignKey: 'elderly_id',
+  as: 'pendingRatings',
+});
+
 // NurseProfile associations
 NurseProfile.belongsTo(User, {
   foreignKey: 'user_id',
@@ -181,6 +193,11 @@ NurseProfile.hasMany(AvailabilitySlot, {
   onDelete: 'CASCADE',
 });
 
+NurseProfile.hasMany(Rating, {
+  foreignKey: 'nurse_id',
+  as: 'ratingsReceived',
+});
+
 // NurseCertification associations
 NurseCertification.belongsTo(NurseProfile, {
   foreignKey: 'nurse_profile_id',
@@ -224,6 +241,16 @@ WalkSession.belongsTo(NurseProfile, {
 WalkSession.hasMany(EmergencyAlert, {
   foreignKey: 'walk_session_id',
   as: 'emergencyAlerts',
+});
+
+WalkSession.hasOne(Rating, {
+  foreignKey: 'walk_session_id',
+  as: 'rating',
+});
+
+WalkSession.hasOne(PendingRating, {
+  foreignKey: 'walk_session_id',
+  as: 'pendingRating',
 });
 
 // Activity associations
@@ -430,7 +457,9 @@ export {
   ActivityTracker,
   EmergencyAlert,
   Otp,
-  NurseCertification
+  NurseCertification,
+  Rating,
+  PendingRating
 };
 
 export default {
@@ -455,5 +484,7 @@ export default {
   NurseCertification,
   AvailabilityRule,
   AvailabilitySlot,
-  Booking
+  Booking,
+  Rating,
+  PendingRating
 };

@@ -45,6 +45,7 @@ export interface WalkCompletedPayload {
   bookingId:          string;
   nurseId:            string;
   elderlyId:          string;
+  elderlyUserId?:     string; // Added for notifications
   actualDurationMins: number;
   distanceMeters:     number;
   stepsCount:         number;

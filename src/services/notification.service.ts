@@ -1,10 +1,19 @@
 import Notification, {
   NotificationType,
   NotificationPriority,
+  NotificationChannel,
 } from '../models/Notification.model';
 import User, { UserRole } from '../models/User.model';
+import NurseProfile from '../models/NurseProfile.model';
+import ElderlyProfile from '../models/ElderlyProfile.model';
 import { logger } from '../utils/logger.util';
 import { AppError, ErrorCode } from '../utils/error.util';
+import { EmailProvider } from './notifications/providers/email.provider';
+import { SMSProvider } from './notifications/providers/sms.provider';
+import { PushProvider } from './notifications/providers/push.provider';
+import { INotificationProvider } from './notifications/types';
+import appEvents from '../utils/event-emitter.util';
+import { EVENTS } from '../constants';
 
 /**
  * Notification creation options
@@ -16,6 +25,7 @@ export interface CreateNotificationOptions {
   message: string;
   priority?: NotificationPriority;
   actionUrl?: string;
+  channels?: NotificationChannel[];
 }
 
 /**
@@ -34,6 +44,15 @@ export interface CreateBulkNotificationOptions {
  * Notification service class
  */
 class NotificationService {
+  private providers: Map<NotificationChannel, INotificationProvider>;
+
+  constructor() {
+    this.providers = new Map();
+    this.providers.set(NotificationChannel.EMAIL, new EmailProvider());
+    this.providers.set(NotificationChannel.SMS, new SMSProvider());
+    this.providers.set(NotificationChannel.PUSH, new PushProvider());
+  }
+
   /**
    * Create a notification for a single user
    */
@@ -53,15 +72,21 @@ class NotificationService {
         title: options.title,
         message: options.message,
         priority: options.priority || NotificationPriority.MEDIUM,
+        channel: NotificationChannel.IN_APP, // Always create in-app record
         action_url: options.actionUrl,
         is_read: false,
       });
 
-      logger.info('Notification created', {
+      logger.info('In-app notification created', {
         notificationId: notification.id,
         userId: options.userId,
-        type: options.type,
       });
+
+      // Handle external channels
+      const channels = options.channels || [];
+      if (channels.length > 0) {
+        await this.sendToExternalChannels(user, options);
+      }
 
       return notification;
     } catch (error) {
@@ -85,6 +110,7 @@ class NotificationService {
             title: options.title,
             message: options.message,
             priority: options.priority || NotificationPriority.MEDIUM,
+            channel: NotificationChannel.IN_APP,
             action_url: options.actionUrl,
             is_read: false,
           })
@@ -314,6 +340,74 @@ class NotificationService {
       throw error;
     }
   }
+
+  /**
+   * Internal helper to route notifications to external providers
+   */
+  private async sendToExternalChannels(user: User, options: CreateNotificationOptions): Promise<void> {
+    const channels = options.channels || [];
+    
+    for (const channel of channels) {
+      if (channel === NotificationChannel.IN_APP) continue;
+
+      const provider = this.providers.get(channel);
+      if (!provider) {
+        logger.warn(`No provider found for channel: ${channel}`);
+        continue;
+      }
+
+      try {
+        let recipient: string | undefined;
+
+        if (channel === NotificationChannel.EMAIL) {
+          recipient = user.email;
+        } else if (channel === NotificationChannel.SMS || channel === NotificationChannel.PUSH) {
+          // Fetch phone/token from specific profile
+          if (user.role === UserRole.NURSE) {
+            const profile = await NurseProfile.findOne({ where: { user_id: user.id } });
+            recipient = channel === NotificationChannel.SMS ? profile?.phone : profile?.device_token;
+          } else if (user.role === UserRole.ELDERLY) {
+            const profile = await ElderlyProfile.findOne({ where: { user_id: user.id } });
+            recipient = channel === NotificationChannel.SMS ? profile?.phone : profile?.device_token;
+          }
+        }
+
+        if (!recipient) {
+          logger.warn(`Could not find recipient identifier for channel ${channel}`, { userId: user.id });
+          continue;
+        }
+
+        await provider.send(recipient, options.title, options.message);
+        
+        // Log individual channel success as separate records if needed, 
+        // but typically one DB record (IN_APP) is enough for history, 
+        // external ones are "sent" events.
+        
+        logger.info(`Notification sent via ${channel}`, { userId: user.id });
+      } catch (err) {
+        logger.error(`Failed to send notification via ${channel}`, err as Error);
+        // We don't throw here to avoid failing the whole request if one channel fails
+      }
+    }
+  }
+
+  /**
+   * Internal helper to send directly to a recipient string via a channel
+   */
+  public async sendDirect(channel: NotificationChannel, recipient: string, title: string, message: string, metadata?: any): Promise<void> {
+    const provider = this.providers.get(channel);
+    if (!provider) {
+        logger.warn(`No provider found for channel: ${channel}`);
+        return;
+    }
+    
+    try {
+        await provider.send(recipient, title, message, metadata);
+        logger.info(`Direct notification sent via ${channel}`, { recipient });
+    } catch (err) {
+        logger.error(`Failed to send direct notification via ${channel}`, err as Error);
+    }
+  }
 }
 
 // Export singleton instance
@@ -469,7 +563,7 @@ export const notifySystem = async (
   priority: NotificationPriority = NotificationPriority.MEDIUM,
   actionUrl?: string
 ): Promise<Notification> => {
-  return createNotification({
+  return notificationService.createNotification({
     userId,
     type: NotificationType.SYSTEM,
     title,
@@ -478,4 +572,43 @@ export const notifySystem = async (
     actionUrl,
   });
 };
+
+/**
+ * Event Listeners
+ */
+
+// Listen for completed walks to notify the elderly user
+appEvents.on(EVENTS.WALK_COMPLETED, async (payload) => {
+  try {
+    const message = `Your walk session with Nurse ${payload.nurseId} is complete. You walked ${payload.distanceMeters} meters!`;
+    
+    if (payload.elderlyUserId) {
+      await createNotification({
+        userId: payload.elderlyUserId,
+        type: NotificationType.SYSTEM,
+        title: 'Walk Completed',
+        message: message,
+        priority: NotificationPriority.MEDIUM,
+        channels: [NotificationChannel.IN_APP, NotificationChannel.PUSH]
+      });
+    }
+    
+    logger.info(`Automated notification sent for ${EVENTS.WALK_COMPLETED}`, { sessionId: payload.sessionId });
+  } catch (error) {
+    logger.error(`Error in ${EVENTS.WALK_COMPLETED} listener`, error as Error);
+  }
+});
+
+// Listen for cancelled walks
+appEvents.on(EVENTS.WALK_CANCELLED, async (payload) => {
+  try {
+    await notifyWalkCancelled(
+      payload.userId,
+      payload.reason,
+      payload.actionUrl
+    );
+  } catch (error) {
+    logger.error(`Error in ${EVENTS.WALK_CANCELLED} listener`, error as Error);
+  }
+});
 

@@ -10,5 +10,9 @@ export const initJobs = () => {
 
     initSlotExpiryJob();
     initOtpCleanupJob();
+    
+    // Start Ratings Expiry Job
+    import('./ratings-expiry.job').then(m => m.ratingsExpiryJob.start());
+    
     logger.info('All background jobs initialized');
 };
