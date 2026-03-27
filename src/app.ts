@@ -33,10 +33,33 @@ export const createApp = async (): Promise<Application> => {
   app.use(helmet());
 
   // CORS configuration
+  const allowedOrigins = [
+    'http://localhost:8080',
+    'http://192.168.0.179:8080',
+    'http://172.27.160.1:8080'
+  ];
+
+  app.use((req, res, next) => {
+    const origin = req.get('origin');
+    if (origin) {
+      logger.info(`CORS Check - Origin: ${origin}, Credentials Config: ${config.cors.credentials}`);
+    }
+    next();
+  });
+
   app.use(
     cors({
-      origin: true,
-      credentials: config.cors.credentials,
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || config.env === 'development') {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      },
+      credentials: true, // Hardcoding to true to test if config vs env is the issue
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
       exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit'],
