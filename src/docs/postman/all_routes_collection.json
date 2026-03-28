@@ -1,0 +1,145 @@
+{
+  "info": {
+    "_postman_id": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+    "name": "Silver Walks - All Routes",
+    "description": "Auto-generated collection based on src/routes/index.ts",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        { "name": "Register Elderly", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/register-elderly" } },
+        { "name": "Register Nurse", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/register-nurse" } },
+        { "name": "Login Elderly", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/login-elderly" } },
+        { "name": "Login Nurse", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/login-nurse" } },
+        { "name": "Verify OTP", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/verify-otp" } },
+        { "name": "Forgot Password", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/forgot-password" } },
+        { "name": "Reset Password", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/reset-password" } },
+        { "name": "Refresh Token", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/refresh" } },
+        { "name": "Logout", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/logout" } }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "Get Users", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/users" } }
+      ]
+    },
+    {
+      "name": "Elderly",
+      "item": [
+        { "name": "Update Device Token", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/elderly/me/device-token" } }
+      ]
+    },
+    {
+      "name": "Nurses",
+      "item": [
+        { "name": "Get Nurses", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/nurses" } },
+        { "name": "Get Me", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/nurses/me" } },
+        { "name": "Update Profile", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/nurses/profile" } },
+        { "name": "Update Availability", "request": { "method": "PUT", "url": "{{baseUrl}}/api/v1/nurses/availability" } },
+        { "name": "Add Certification", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/nurses/certifications" } },
+        { "name": "Remove Certification", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/nurses/certifications/:id" } },
+        { "name": "Get Availability Rules", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/nurses/availability/rules" } },
+        { "name": "Create Availability Rule", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/nurses/availability/rules" } },
+        { "name": "Delete Availability Rule", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/v1/nurses/availability/rules/:id" } },
+        { "name": "Update Device Token", "request": { "method": "PATCH", "url": "{{baseUrl}}/api/v1/nurses/me/device-token" } }
+      ]
+    },
+    {
+      "name": "Walks",
+      "item": [
+        { "name": "Get All Walks", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/walks" } },
+        { "name": "Get Today's Walk", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/walks/today" } },
+        { "name": "Get Weekly Walks", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/walks/weekly" } },
+        { "name": "Get Walk Stats", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/walks/stats" } },
+        { "name": "Create Walk", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/walks" } },
+        { "name": "Match Nurse", "request": { "method": "POST", "url": "{{baseUrl}}/api/v1/walks/match" } },
+        { "name": "Get Slots", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/walks/slots" } }
+      ]
+    },
+    {
+      "name": "Health Profiles",
+      "item": [
+        { "name": "Get Health Profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/health-profiles" } }
+      ]
+    },
+    {
+      "name": "Emergency Contacts",
+      "item": [
+        { "name": "Get Emergency Contacts", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/emergency-contacts" } }
+      ]
+    },
+    {
+      "name": "Emergency Alerts",
+      "item": [
+        { "name": "Get Alerts", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/emergency-alerts" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "Get Notifications", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/notifications" } }
+      ]
+    },
+    {
+      "name": "Subscriptions",
+      "item": [
+        { "name": "Get Subscriptions", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/subscriptions" } }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        { "name": "Get Payments", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/payments" } }
+      ]
+    },
+    {
+      "name": "Withdrawals",
+      "item": [
+        { "name": "Get Withdrawals", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/withdrawals" } }
+      ]
+    },
+    {
+      "name": "Bank Accounts",
+      "item": [
+        { "name": "Get Bank Accounts", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/bank-accounts" } }
+      ]
+    },
+    {
+      "name": "Ratings",
+      "item": [
+        { "name": "Get Ratings", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/ratings" } }
+      ]
+    },
+    {
+      "name": "Activities",
+      "item": [
+        { "name": "Get Activities", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/activities" } }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        { "name": "Get Analytics", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/analytics" } }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Admin Dashboard", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/admin" } }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        { "name": "Health Check", "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/health" } }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000", "type": "string" },
+    { "key": "accessToken", "value": "", "type": "string" }
+  ]
+}

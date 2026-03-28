@@ -38,7 +38,8 @@ export const createApp = async (): Promise<Application> => {
     'http://localhost:5173',
     'http://localhost:5174',
     'http://192.168.0.179:8080',
-    'http://172.27.160.1:8080'
+    'http://172.27.160.1:8080',
+    'https://silverwalks.vercel.app'
   ];
 
   app.use((req, res, next) => {

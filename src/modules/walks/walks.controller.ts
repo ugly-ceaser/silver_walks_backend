@@ -22,23 +22,33 @@ const getElderlyProfileByUserId = async (userId: string) => {
 
 /**
  * GET /api/v1/walks
- * Get all walk sessions for the current elderly user
+ * Get all walk sessions for the current user (Elderly or Nurse)
  */
 export const getWalkSessions = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.userId;
+        const role = req.user?.role;
         if (!userId) throw new ValidationError('User ID not found in request');
 
-        const profile = await getElderlyProfileByUserId(userId);
-
         const { status, startDate, endDate, limit } = req.query;
-
-        const sessions = await walksByService.getWalkSessionsByElderly(profile.id, {
+        const filters = {
             status: status as string,
             startDate: startDate as string,
             endDate: endDate as string,
             limit: limit ? parseInt(limit as string) : undefined
-        });
+        };
+
+        let sessions;
+
+        if (role === 'nurse') {
+            const nurse = await NurseProfile.findOne({ where: { user_id: userId } });
+            if (!nurse) throw new NotFoundError('Nurse profile not found');
+            sessions = await walksByService.getWalkSessionsByNurse(nurse.id, filters);
+        } else {
+            // Default to elderly
+            const profile = await getElderlyProfileByUserId(userId);
+            sessions = await walksByService.getWalkSessionsByElderly(profile.id, filters);
+        }
 
         res.status(200).json({
             success: true,
@@ -97,21 +107,28 @@ export const getWeeklyWalks = async (req: Request, res: Response, next: NextFunc
 
 /**
  * GET /api/v1/walks/stats
- * Get walk statistics for the current elderly user
+ * Get walk statistics for the current user (Elderly or Nurse)
  */
 export const getWalkStats = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.user?.userId;
+        const role = req.user?.role;
         if (!userId) throw new ValidationError('User ID not found in request');
 
-        const profile = await getElderlyProfileByUserId(userId);
-
         const { period } = req.query;
+        const statsPeriod = (period as 'all-time' | 'month' | 'year') || 'all-time';
 
-        const stats = await walksByService.getWalkStatistics(
-            profile.id,
-            (period as 'all-time' | 'month' | 'year') || 'all-time'
-        );
+        let stats;
+
+        if (role === 'nurse') {
+            const nurse = await NurseProfile.findOne({ where: { user_id: userId } });
+            if (!nurse) throw new NotFoundError('Nurse profile not found');
+            stats = await walksByService.getNurseWalkStatistics(nurse.id, statsPeriod);
+        } else {
+            // Default to elderly behavior
+            const profile = await getElderlyProfileByUserId(userId);
+            stats = await walksByService.getWalkStatistics(profile.id, statsPeriod);
+        }
 
         res.status(200).json({
             success: true,

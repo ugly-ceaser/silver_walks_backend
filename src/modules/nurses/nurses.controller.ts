@@ -157,3 +157,18 @@ export const updateDeviceToken = async (req: Request, res: Response, next: NextF
         next(error);
     }
 };
+
+/**
+ * GET /api/v1/nurses/clients
+ * Get nurse's clients (elderly profiles) with status filtering
+ */
+export const getClients = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = (req.user as any).userId;
+        const { status } = req.query;
+        const clients = await nursesService.getNurseClients(userId, status as string);
+        return createdResponse(res, clients, 'Clients fetched successfully', 200);
+    } catch (error) {
+        next(error);
+    }
+};

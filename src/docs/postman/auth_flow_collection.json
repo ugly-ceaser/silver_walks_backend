@@ -68,6 +68,36 @@
                         "description": "Verifies the user's email using the OTP sent during registration."
                     },
                     "response": []
+                },
+                {
+                    "name": "Register Nurse User",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"fullName\": \"Nurse Joy\",\n    \"email\": \"nurse@example.com\",\n    \"phone\": \"+12223334444\",\n    \"gender\": \"female\",\n    \"yearsOfExperience\": 5,\n    \"maxPatientsPerDay\": 4,\n    \"address\": \"789 Healthcare Blvd\",\n    \"specializations\": [\"Elderly Care\", \"Wound Care\"],\n    \"certifications\": [\n        {\n            \"name\": \"Registered Nurse (RN)\",\n            \"issuer\": \"Medical Board\",\n            \"issueDate\": \"2020-01-01\",\n            \"expiryDate\": \"2025-01-01\"\n        }\n    ],\n    \"availableTimeSlots\": [\n        {\n            \"dayOfWeek\": 1,\n            \"startTime\": \"09:00\",\n            \"endTime\": \"17:00\"\n        }\n    ]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/register-nurse",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "register-nurse"
+                            ]
+                        },
+                        "description": "Registers a new nurse user. Password is set to 'SilverWalks123#' by default."
+                    },
+                    "response": []
                 }
             ]
         },
@@ -101,6 +131,102 @@
                             ]
                         },
                         "description": "Logs in the elderly user. Requires a verified email."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Login Nurse",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"identifier\": \"nurse@example.com\",\n    \"password\": \"SilverWalks123#\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/login-nurse",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login-nurse"
+                            ]
+                        },
+                        "description": "Logs in a nurse user."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Refresh Token",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/refresh",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "refresh"
+                            ]
+                        },
+                        "description": "Refreshes the access token using a valid refresh token."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Logout",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{accessToken}}",
+                                "type": "text"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/logout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "logout"
+                            ]
+                        },
+                        "description": "Logs out the user and revokes the refresh token."
                     },
                     "response": []
                 }

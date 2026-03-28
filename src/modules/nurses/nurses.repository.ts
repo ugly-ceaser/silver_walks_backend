@@ -1,4 +1,5 @@
 import NurseProfile, { AvailabilityStatus, VerificationStatus } from "../../models/NurseProfile.model";
+import { WalkSessionStatus } from "../../models/WalkSession.model";
 import NurseAvailability from "../../models/NurseAvailability.model";
 import NurseCertification from "../../models/NurseCertification.model";
 import ElderlyProfile from "../../models/ElderlyProfile.model";
@@ -156,6 +157,64 @@ export class NursesRepository {
      */
     async findElderlyProfileById(id: string): Promise<ElderlyProfile | null> {
         return ElderlyProfile.findByPk(id);
+    }
+
+    /**
+     * Get Nurse Ranking/Percentile based on total_walks_completed
+     */
+    async getNurseRanking(nurseId: string): Promise<number> {
+        // 1. Get total number of approved nurses
+        const totalNurses = await NurseProfile.count({
+            where: { verification_status: VerificationStatus.APPROVED }
+        });
+
+        if (totalNurses === 0) return 100;
+
+        // 2. Get the specific nurse's completed walks
+        const nurse = await NurseProfile.findByPk(nurseId, { attributes: ['total_walks_completed'] });
+        if (!nurse) return 100;
+
+        // 3. Count how many nurses have STRICTLY MORE completed walks
+        const rankHigher = await NurseProfile.count({
+            where: {
+                verification_status: VerificationStatus.APPROVED,
+                total_walks_completed: { [Op.gt]: nurse.total_walks_completed }
+            }
+        });
+
+        // 4. Calculate percentile: (RankHigher + 1) / Total * 100
+        const percentile = ((rankHigher + 1) / totalNurses) * 100;
+        
+        return Number(percentile.toFixed(1));
+    }
+
+    /**
+     * Find unique elderly clients for a nurse based on walk session status
+     */
+    async findClientsByNurseId(nurseId: string, statuses?: WalkSessionStatus[]): Promise<ElderlyProfile[]> {
+        const WalkSession = (await import("../../models/WalkSession.model")).default;
+        
+        const where: any = { nurse_id: nurseId };
+        if (statuses && statuses.length > 0) {
+            where.status = { [Op.in]: statuses };
+        }
+
+        const sessions = await WalkSession.findAll({
+            where,
+            attributes: ['elderly_id'],
+            include: [
+                {
+                    model: ElderlyProfile,
+                    as: 'elderlyProfile'
+                }
+            ],
+            group: ['elderly_id', 'elderlyProfile.id']
+        });
+
+        // Extract and return unique elderly profiles
+        return sessions
+            .map(session => session.elderlyProfile)
+            .filter((profile): profile is ElderlyProfile => !!profile);
     }
 }
 

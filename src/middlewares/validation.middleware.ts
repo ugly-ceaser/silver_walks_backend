@@ -23,15 +23,19 @@ export const validateRequest = (rules: {
       // Validate query
       if (rules.query && req.query) {
         validate(req.query, rules.query);
-        // Sanitize query
-        req.query = sanitizeObject(req.query) as any;
+        // Sanitize query by updating properties
+        const sanitizedQuery = sanitizeObject(req.query);
+        Object.keys(req.query).forEach(key => delete (req.query as any)[key]);
+        Object.assign(req.query, sanitizedQuery);
       }
 
       // Validate params
       if (rules.params && req.params) {
         validate(req.params, rules.params);
-        // Sanitize params
-        req.params = sanitizeObject(req.params) as any;
+        // Sanitize params by updating properties
+        const sanitizedParams = sanitizeObject(req.params);
+        Object.keys(req.params).forEach(key => delete (req.params as any)[key]);
+        Object.assign(req.params, sanitizedParams);
       }
 
       next();

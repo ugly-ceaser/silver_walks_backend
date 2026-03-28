@@ -9,8 +9,9 @@
     "mocks": [],
     "specs": [],
     "collections": [
-      "..\\src\\docs\\postman\\auth_flow_collection.json",
-      "..\\src\\docs\\postman\\walks_module_collection.json"
+      "src/docs/postman/auth_flow_collection.json",
+      "src/docs/postman/walks_module_collection.json",
+      "src/docs/postman/all_routes_collection.json"
     ]
   }
 }

@@ -53,8 +53,10 @@ export const getAvailableNurses = async (filters: {
     }
 };
 
+import { walksRepository } from "../walks/walks.repository";
+
 /**
- * Get the current nurse's profile
+ * Get the current nurse's profile with analytics
  */
 export const getNurseProfile = async (userId: string) => {
     const nurse = await nursesRepository.findNurseByUserId(userId);
@@ -62,10 +64,16 @@ export const getNurseProfile = async (userId: string) => {
         throw new NotFoundError('Nurse profile not found');
     }
 
+    // Fetch analytics in parallel
+    const [monthlyStats, rankingPercentile] = await Promise.all([
+        walksRepository.getWalkStatisticsByNurseId(nurse.id, 'month'),
+        nursesRepository.getNurseRanking(nurse.id)
+    ]);
+
     return {
         id: nurse.id,
         name: nurse.name,
-        email: (nurse as any).user?.email, // We might need to include User in the repository query if we want email
+        email: (nurse as any).user?.email,
         phone: nurse.phone,
         gender: nurse.gender,
         experience_years: nurse.experience_years,
@@ -74,6 +82,9 @@ export const getNurseProfile = async (userId: string) => {
         specializations: nurse.specializations,
         profile_picture: nurse.profile_picture,
         rating: Number(nurse.rating),
+        total_walks_completed: nurse.total_walks_completed,
+        monthly_walks_count: monthlyStats.totalWalks,
+        ranking_percentile: rankingPercentile,
         availability: nurse.availability,
         certifications: nurse.certifications_list
     };
@@ -199,4 +210,35 @@ export const updateDeviceToken = async (userId: string, token: string) => {
 
     await nursesRepository.updateProfile(nurse.id, { device_token: token });
     return { success: true };
+};
+
+import { WalkSessionStatus } from "../../models/WalkSession.model";
+
+/**
+ * Get unique clients for a nurse based on walk status
+ */
+export const getNurseClients = async (userId: string, status?: string) => {
+    const nurse = await nursesRepository.findNurseByUserId(userId);
+    if (!nurse) throw new NotFoundError('Nurse profile not found');
+
+    let statuses: WalkSessionStatus[] = [];
+    if (status === 'booked') {
+        statuses = [WalkSessionStatus.SCHEDULED, WalkSessionStatus.CONFIRMED];
+    } else if (status === 'walking') {
+        statuses = [WalkSessionStatus.IN_PROGRESS];
+    } else if (status === 'walked') {
+        statuses = [WalkSessionStatus.COMPLETED];
+    }
+
+    const clients = await nursesRepository.findClientsByNurseId(nurse.id, statuses);
+
+    return clients.map(client => ({
+        id: client.id,
+        name: client.name,
+        profilePicture: client.profile_picture,
+        phone: client.phone,
+        address: client.address,
+        latitude: client.latitude,
+        longitude: client.longitude
+    }));
 };

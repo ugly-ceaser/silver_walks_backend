@@ -154,6 +154,38 @@ export const getWalkSessionsByElderly = async (
 };
 
 /**
+ * Get all walk sessions for a nurse user with optional filters
+ */
+export const getWalkSessionsByNurse = async (
+    nurseId: string,
+    filters: {
+        status?: string;
+        startDate?: string;
+        endDate?: string;
+        limit?: number;
+    } = {}
+) => {
+    logger.info('Fetching walk sessions for nurse user', { nurseId, filters });
+
+    try {
+        // Map frontend status to database status
+        const dbStatus = filters.status ? mapStatusToDatabase(filters.status) : undefined;
+
+        const sessions = await walksRepository.findWalksByNurseIdWithFilters(nurseId, {
+            status: dbStatus,
+            startDate: filters.startDate ? new Date(filters.startDate) : undefined,
+            endDate: filters.endDate ? new Date(filters.endDate) : undefined,
+            limit: filters.limit
+        });
+
+        return sessions.map(formatWalkSession);
+    } catch (error) {
+        logger.error('Error fetching walk sessions', error as Error);
+        throw error;
+    }
+};
+
+/**
  * Helper: Map frontend status to database status
  */
 const mapStatusToDatabase = (status: string): WalkSessionStatus | undefined => {
@@ -250,6 +282,32 @@ export const getWalkStatistics = async (elderlyId: string, period: 'all-time' | 
 
     try {
         const stats = await walksRepository.getWalkStatisticsByElderlyId(elderlyId, period);
+
+        return {
+            totalWalks: stats.totalWalks,
+            totalDuration: stats.totalDuration,
+            totalSteps: stats.totalSteps,
+            totalDistance: stats.totalDistance,
+            avgDuration: stats.avgDuration,
+            avgSteps: stats.avgSteps,
+            avgDistance: stats.avgDistance,
+            avgRating: stats.avgRating,
+            completionRate: stats.completionRate
+        };
+    } catch (error) {
+        logger.error('Error fetching walk statistics', error as Error);
+        throw error;
+    }
+};
+
+/**
+ * Get walk statistics for a nurse user
+ */
+export const getNurseWalkStatistics = async (nurseId: string, period: 'all-time' | 'month' | 'year' = 'all-time') => {
+    logger.info('Fetching walk statistics for nurse user', { nurseId, period });
+
+    try {
+        const stats = await walksRepository.getWalkStatisticsByNurseId(nurseId, period);
 
         return {
             totalWalks: stats.totalWalks,

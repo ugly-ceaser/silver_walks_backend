@@ -20,6 +20,7 @@ nurses.get('/', nursesController.getNurses);
 
 // Nurse management routes
 nurses.get('/me', requireNurse, nursesController.getMe);
+nurses.get('/clients', requireNurse, nursesController.getClients);
 nurses.patch('/profile', requireNurse, validateUpdateProfile, nursesController.updateProfile);
 nurses.put('/availability', requireNurse, validateUpdateAvailability, nursesController.updateAvailability);
 nurses.post('/certifications', requireNurse, validateAddCertification, nursesController.addCertification);
