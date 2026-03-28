@@ -35,6 +35,8 @@ export const createApp = async (): Promise<Application> => {
   // CORS configuration
   const allowedOrigins = [
     'http://localhost:8080',
+    'http://localhost:5173',
+    'http://localhost:5174',
     'http://192.168.0.179:8080',
     'http://172.27.160.1:8080'
   ];
@@ -42,7 +44,7 @@ export const createApp = async (): Promise<Application> => {
   app.use((req, res, next) => {
     const origin = req.get('origin');
     if (origin) {
-      logger.info(`CORS Check - Origin: ${origin}, Credentials Config: ${config.cors.credentials}`);
+      logger.info(`CORS Check - Origin: ${origin}, Credentials Config: ${config.cors.credentials}, ENV: ${config.env}`);
     }
     next();
   });
@@ -53,15 +55,18 @@ export const createApp = async (): Promise<Application> => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
         
-        if (allowedOrigins.indexOf(origin) !== -1 || config.env === 'development') {
+        // Match exact whitelist or any localhost with ports or development mode
+        const isLocalhost = /^http:\/\/localhost(:\d+)?$/.test(origin);
+        
+        if (allowedOrigins.indexOf(origin) !== -1 || isLocalhost || config.env === 'development') {
           callback(null, true);
         } else {
-          callback(new Error('Not allowed by CORS'));
+          callback(new Error(`Origin ${origin} not allowed by CORS`));
         }
       },
-      credentials: true, // Hardcoding to true to test if config vs env is the issue
+      credentials: true, // Always allow credentials in dev stages
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
       exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit'],
     })
   );

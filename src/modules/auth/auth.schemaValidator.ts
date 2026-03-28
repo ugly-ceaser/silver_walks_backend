@@ -432,3 +432,30 @@ export const validateNurseRegistration = (
   req.body = value;
   next();
 };
+
+/**
+ * Middleware to validate nurse user login data
+ */
+export const validateNurseLogin = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  const { error, value } = loginElderlySchema.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true,
+  });
+
+  if (error) {
+    const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
+      field: detail.path.join('.'),
+      message: detail.message,
+    }));
+
+    validationErrorResponse(res, errors, 'Validation failed');
+    return;
+  }
+
+  req.body = value;
+  next();
+};

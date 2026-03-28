@@ -4,7 +4,7 @@ import { SubscriptionStatus, SubscriptionPlan } from "../../types/subscription.t
 import { MobilityLevel } from "../../types/mobility.types";
 import { logger } from "../../utils/logger.util";
 import { comparePassword, hashPassword } from "../../utils/encryption.util";
-import { sendElderlyWelcomeEmail, sendPasswordResetSuccessEmail } from "../../utils/emailHelpers.util";
+import { sendElderlyWelcomeEmail, sendNurseWelcomeEmail, sendPasswordResetSuccessEmail } from "../../utils/emailHelpers.util";
 import { otpService } from "../../services/otp.service";
 import { OtpPurpose } from "../../models/Otp.model";
 import { authRepository } from "./auth.repository";
@@ -502,6 +502,20 @@ export const verifyEmailWithOtp = async (
       ).catch((error: Error) => {
         logger.error('Failed to send welcome email after verification', error);
       });
+    } else {
+      // Check if it's a nurse
+      const nurseProfile = await authRepository.findNurseProfileByUserId(user.id);
+      if (nurseProfile) {
+        const tempPassword = "SilverWalks123#";
+        sendNurseWelcomeEmail(
+          user.email,
+          nurseProfile.name,
+          tempPassword,
+          process.env.CLIENT_URL || 'http://localhost:3000/login'
+        ).catch((error: Error) => {
+          logger.error('Failed to send nurse welcome email after verification', error);
+        });
+      }
     }
 
     logger.info("Email verified successfully", { userId: user.id });

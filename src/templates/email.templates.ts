@@ -38,6 +38,39 @@ export const elderlyWelcomeTemplate = `
 `;
 
 /**
+ * Welcome Email Template for Nurses
+ */
+export const nurseWelcomeTemplate = `
+  <h2>Welcome to the Silver Walks Team, {{name}}! 🏥</h2>
+  
+  <p>We're excited to have you join our professional network of caregivers. Your profile has been created and is currently pending review by our administration team.</p>
+  
+  <div style="background-color: #f0f7ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0056b3;">
+    <h3 style="margin-top: 0; color: #0056b3;">Your Account Credentials</h3>
+    <p><strong>Email:</strong> {{email}}</p>
+    <p><strong>Generated Password:</strong> <code style="background: #fff; padding: 4px 8px; border-radius: 4px;">{{tempPassword}}</code></p>
+    <p style="color: #4a5568; margin-top: 10px; font-size: 14px;">
+      <em>Note: This is a temporary password. You will be prompted to change it upon your first login.</em>
+    </p>
+  </div>
+
+  <h3>What Happens Next?</h3>
+  <ul>
+    <li>Our team will review your certifications and background information.</li>
+    <li>Once approved, your profile will become visible to elderly clients in your area.</li>
+    <li>You can log in now to review your profile and availability settings.</li>
+  </ul>
+
+  <div style="text-align: center; margin: 30px 0;">
+    <a href="{{loginUrl}}" class="button">Access Nurse Dashboard</a>
+  </div>
+
+  <p>Thank you for choosing to make a difference in the lives of our seniors.</p>
+  
+  <p>Best regards,<br>The Silver Walks Team</p>
+`;
+
+/**
  * Password Reset Template
  */
 export const passwordResetTemplate = `

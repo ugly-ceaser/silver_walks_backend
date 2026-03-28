@@ -6,6 +6,7 @@ import {
     forgotPassword,
     resetPassword,
     registerNurse,
+    loginNurse,
     refreshTokens,
     logout
 } from './auth.controller';
@@ -22,7 +23,8 @@ import {
     validateElderlyLogin,
     validateForgotPassword,
     validateResetPassword,
-    validateNurseRegistration
+    validateNurseRegistration,
+    validateNurseLogin
 } from './auth.schemaValidator';
 
 const auth = Router();
@@ -110,7 +112,38 @@ auth.post('/register-elderly', authRateLimiter, validateElderlyRegistration, reg
  */
 auth.post('/register-nurse', authRateLimiter, validateNurseRegistration, registerNurse);
 
+/**
+ * @swagger
+ * /auth/login-nurse:
+ *   post:
+ *     summary: Login for nurse user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - identifier
+ *               - password
+ *             properties:
+ *               identifier:
+ *                 type: string
+ *                 description: Email or phone number
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
+auth.post('/login-nurse', authRateLimiter, validateNurseLogin, loginNurse);
+
 auth.post('/login-elderly', authRateLimiter, validateElderlyLogin, loginElderlyUser);
+
+auth.post('/login-nurse', authRateLimiter, validateNurseLogin, loginNurse);
 
 // Email Verification (legacy/specific)
 auth.post('/verify-email', emailVerificationRateLimiter, verifyEmail);

@@ -24,6 +24,28 @@ export const sendElderlyWelcomeEmail = async (
 };
 
 /**
+ * Send welcome email to nurse after registration
+ */
+export const sendNurseWelcomeEmail = async (
+  email: string,
+  name: string,
+  tempPassword: string,
+  loginUrl: string = 'http://localhost:3000/login'
+): Promise<void> => {
+  await sendMailWithLayout({
+    to: email,
+    subject: 'Welcome to the Silver Walks Team! 🏥',
+    template: templates.nurseWelcomeTemplate,
+    data: {
+      name,
+      email,
+      tempPassword,
+      loginUrl,
+    },
+  });
+};
+
+/**
  * Send password reset email
  */
 export const sendPasswordResetEmail = async (
