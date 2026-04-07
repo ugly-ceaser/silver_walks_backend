@@ -140,10 +140,7 @@ auth.post('/register-nurse', authRateLimiter, validateNurseRegistration, registe
  *         description: Invalid credentials
  */
 auth.post('/login-nurse', authRateLimiter, validateNurseLogin, loginNurse);
-
 auth.post('/login-elderly', authRateLimiter, validateElderlyLogin, loginElderlyUser);
-
-auth.post('/login-nurse', authRateLimiter, validateNurseLogin, loginNurse);
 
 // Email Verification (legacy/specific)
 auth.post('/verify-email', emailVerificationRateLimiter, verifyEmail);

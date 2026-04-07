@@ -8,9 +8,11 @@ export const walksSchema = {
     // POST /api/v1/walks
     createWalk: {
         body: [
-            { field: 'date', rules: [{ validator: validators.required, message: 'Date is required' }, { validator: (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v), message: 'Invalid date format (YYYY-MM-DD)' }] },
-            { field: 'time', rules: [{ validator: validators.required, message: 'Time is required' }, { validator: (v: string) => /^\d{2}:\d{2}$/.test(v), message: 'Invalid time format (HH:mm)' }] },
-            { field: 'duration', rules: [{ validator: validators.required, message: 'Duration is required' }, { validator: (v: any) => (SLOT_DURATIONS as unknown as number[]).includes(Number(v)), message: 'Invalid duration' }] }
+            { field: 'scheduledDates', rules: [{ validator: validators.required, message: 'Scheduled dates are required' }, { validator: (v: any) => Array.isArray(v) && v.every((d: string) => /^\d{4}-\d{2}-\d{2}$/.test(d)), message: 'Invalid date format (YYYY-MM-DD)' }] },
+            { field: 'scheduledTime', rules: [{ validator: validators.required, message: 'Scheduled time is required' }, { validator: (v: string) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(v), message: 'Invalid time format (HH:mm)' }] },
+            { field: 'duration', rules: [{ validator: validators.required, message: 'Duration is required' }, { validator: (v: any) => (SLOT_DURATIONS as unknown as number[]).includes(Number(v)), message: 'Invalid duration' }] },
+            { field: 'matchingMode', rules: [{ validator: validators.required, message: 'Matching mode is required' }, { validator: (v: any) => ['auto', 'manual'].includes(v), message: 'Invalid matching mode' }] },
+            { field: 'nurseId', rules: [{ validator: (v: any, data: any) => data.matchingMode === 'manual' ? !!v : true, message: 'Nurse ID is required for manual matching' }] }
         ]
     },
 

@@ -329,7 +329,6 @@ export const getNurseWalkStatistics = async (nurseId: string, period: 'all-time'
  * Create multiple walk sessions
  */
 export const createWalkSessions = async (data: {
-    elderlyId: string;
     scheduledDates: string[];
     scheduledTime: string;
     duration: number;
@@ -343,6 +342,12 @@ export const createWalkSessions = async (data: {
         throw new ValidationError('At least one scheduled date is required');
     }
 
+    // Resolve elderly profile from user ID
+    const elderly = await ElderlyProfile.findOne({ where: { user_id: data.requestedBy } });
+    if (!elderly) {
+        throw new NotFoundError('Elderly profile not found for this user');
+    }
+
     const t = await sequelize.transaction();
 
     try {
@@ -350,7 +355,7 @@ export const createWalkSessions = async (data: {
 
         for (const date of data.scheduledDates) {
             const session = await createWalkSession({
-                elderlyId: data.elderlyId,
+                elderlyId: elderly.id,
                 scheduledDate: date,
                 scheduledTime: data.scheduledTime,
                 duration: data.duration,
