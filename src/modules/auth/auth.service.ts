@@ -13,6 +13,7 @@ import RefreshToken from "../../models/RefreshToken.model";
 import AuthEvent, { AuthEventType } from "../../models/AuthEvent.model";
 import { hashData } from "../../utils/encryption.util";
 import { Op } from "sequelize";
+import { UnauthorizedError, ConflictError, ErrorCode, AppError } from "../../utils/error.util";
 
 
 //  DTO Type
@@ -89,6 +90,7 @@ interface LoginElderlyResult {
   accessToken: string;
   refreshToken: string;
 }
+
 
 /**  Helper: Generate fallback email */
 const generateFallbackEmail = (phone: string) => `elderly_${phone}@silverwalks.com`;
@@ -248,7 +250,6 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
 /**  Separated DB logic for login  */
 const checkElderlyRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip: string; userAgent: string }) => {
   const { identifier, password } = data;
-  const genericError = "Invalid credentials";
 
   let user = await authRepository.findUserByEmail(identifier);
   let elderlyProfile = null;
@@ -265,26 +266,35 @@ const checkElderlyRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip
   if (!user) {
     await dummyPasswordCheck(password);
     await logAuthEvent(undefined, AuthEventType.LOGIN_FAILURE, reqInfo, { identifier, reason: 'user_not_found' });
-    throw new Error(genericError);
+    throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
   }
 
-  // 2️⃣ Validate password
+  // Validate password
   const isValidPassword = await comparePassword(password, user.password_hash);
-
   if (!isValidPassword) {
     await logAuthEvent(user.id, AuthEventType.LOGIN_FAILURE, reqInfo, { reason: 'invalid_password' });
-    throw new Error(genericError);
+    throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
   }
 
+  // Check email verification
   if (!user.is_email_verified) {
-    throw new Error("Email not verified. Please verify your email to login.");
+    throw new AppError('Please verify your email before logging in.', 401, ErrorCode.EMAIL_NOT_VERIFIED);
   }
 
-  // 3️⃣ Fetch elderly profile if not found earlier
+  // Check account status — after password so we don't reveal state to strangers
+  if (user.status === UserStatus.PENDING) {
+    throw new AppError('Your account is pending approval.', 403, ErrorCode.ACCOUNT_PENDING);
+  }
+
+  if (!user.is_active || user.status === UserStatus.INACTIVE) {
+    throw new AppError('Your account has been deactivated. Please contact support.', 403, ErrorCode.ACCOUNT_DEACTIVATED);
+  }
+
+  // Fetch elderly profile if not found earlier
   if (!elderlyProfile) {
     elderlyProfile = await authRepository.findElderlyProfileByUserId(user.id);
     if (!elderlyProfile) {
-      throw new Error("Elderly profile not found");
+      throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
     }
   }
 
@@ -294,7 +304,6 @@ const checkElderlyRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip
 /**  Separated DB logic for nurse login  */
 const checkNurseRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip: string; userAgent: string }) => {
   const { identifier, password } = data;
-  const genericError = "Invalid credentials";
 
   let user = await authRepository.findUserByEmail(identifier);
   let nurseProfile = null;
@@ -311,26 +320,35 @@ const checkNurseRecordsExist = async (data: CheckElderlyRecords, reqInfo: { ip: 
   if (!user) {
     await dummyPasswordCheck(password);
     await logAuthEvent(undefined, AuthEventType.LOGIN_FAILURE, reqInfo, { identifier, reason: 'user_not_found' });
-    throw new Error(genericError);
+    throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
   }
 
-  // 2️⃣ Validate password
+  // Validate password
   const isValidPassword = await comparePassword(password, user.password_hash);
-
   if (!isValidPassword) {
     await logAuthEvent(user.id, AuthEventType.LOGIN_FAILURE, reqInfo, { reason: 'invalid_password' });
-    throw new Error(genericError);
+    throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
   }
 
+  // Check email verification
   if (!user.is_email_verified) {
-    throw new Error("Email not verified. Please verify your email to login.");
+    throw new AppError('Please verify your email before logging in.', 401, ErrorCode.EMAIL_NOT_VERIFIED);
   }
 
-  // 3️⃣ Fetch nurse profile if not found earlier
+  // Check account status — after password so we don't reveal state to strangers
+  if (user.status === UserStatus.PENDING) {
+    throw new AppError('Your account is pending approval.', 403, ErrorCode.ACCOUNT_PENDING);
+  }
+
+  if (!user.is_active || user.status === UserStatus.INACTIVE) {
+    throw new AppError('Your account has been deactivated. Please contact support.', 403, ErrorCode.ACCOUNT_DEACTIVATED);
+  }
+
+  // Fetch nurse profile if not found earlier
   if (!nurseProfile) {
     nurseProfile = await authRepository.findNurseProfileByUserId(user.id);
     if (!nurseProfile) {
-      throw new Error("Nurse profile not found");
+      throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
     }
   }
 
@@ -362,7 +380,15 @@ export const registerElderlyUser = async (
         // Fetch elderly profile to return
         const elderlyProfile = await authRepository.findElderlyProfileByUserId(existingUser.id);
         if (!elderlyProfile) {
-          throw new Error("User exists but elderly profile is missing. Please contact support.");
+          logger.error('Data integrity issue: user exists without elderly profile', undefined, { 
+            userId: existingUser.id 
+          });
+          throw new AppError(
+            'An unexpected error occurred. Please contact support.',
+            500,
+            ErrorCode.INTERNAL_ERROR,
+            false  // isOperational: false — this is a programmer/data error, not a user error
+          );
         }
 
         return {
@@ -372,9 +398,8 @@ export const registerElderlyUser = async (
         };
       } else {
         logger.warn("Registration attempt for already verified user", { email: existingUser.email });
-        const error = new Error("An account with this email is already registered and verified. Please login instead.");
-        (error as any).statusCode = 409;
-        throw error;
+        throw new ConflictError("An account with this email already exists.");
+        
       }
     }
 
@@ -418,7 +443,7 @@ export const loginElderlyUser = async (
     const { user, elderlyProfile } = await checkElderlyRecordsExist({ identifier, password }, reqInfo);
 
     if (!elderlyProfile) {
-      throw new Error("Elderly profile not found");
+      throw new UnauthorizedError("Invalid Credentials");
     }
 
     // Generate JWT tokens
@@ -476,7 +501,7 @@ export const verifyEmailWithOtp = async (
     const user = await authRepository.findUserByEmail(email);
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Invalid Credentials");
     }
 
     if (user.is_email_verified) {
@@ -562,39 +587,55 @@ export const completePasswordReset = async (
   logger.info("Completing password reset", { email });
 
   try {
-    // 1. Verify OTP
-    const isValid = await otpService.verifyOtp(email, otp, OtpPurpose.PASSWORD_RESET);
+    // 1. Verify OTP with reason
+    const otpResult = await otpService.verifyOtpWithReason(email, otp, OtpPurpose.PASSWORD_RESET);
 
-    if (!isValid) {
-      throw new Error("Invalid or expired OTP");
+    if (!otpResult.valid) {
+      if (otpResult.reason === 'expired') {
+        throw new AppError('Your reset code has expired. Please request a new one.', 400, ErrorCode.RESET_TOKEN_EXPIRED);
+      }
+      throw new AppError('Invalid reset code.', 400, ErrorCode.RESET_TOKEN_INVALID);
     }
 
     // 2. Find User
     const user = await authRepository.findUserByEmail(email);
-
     if (!user) {
-      throw new Error("User not found");
+      throw new AppError('Invalid credentials', 401, ErrorCode.INVALID_CREDENTIALS);
     }
 
-    // 3. Hash new password
-    const hashedPassword = await hashPassword(newPassword);
+    // 3. Check not same as old password
+    const isSamePassword = await comparePassword(newPassword, user.password_hash);
+    if (isSamePassword) {
+      throw new AppError('New password cannot be the same as your current password.', 400, ErrorCode.PASSWORD_SAME_AS_OLD);
+    }
 
-    // 4. Update password
+    // 4. Check password strength
+    const strongEnough = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(newPassword);
+    if (!strongEnough) {
+      throw new AppError(
+        'Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character.',
+        400,
+        ErrorCode.PASSWORD_TOO_WEAK
+      );
+    }
+
+    // 5. Hash and save new password
+    const hashedPassword = await hashPassword(newPassword);
     user.password_hash = hashedPassword;
     await user.save();
 
-    // Fetch the user's profile to get their name for the email
+    // 6. Fetch profile name for email
     const profile = await authRepository.findElderlyProfileByUserId(user.id) || await authRepository.findNurseProfileByUserId(user.id);
     const userName = profile ? profile.name : 'Silver Walks User';
 
-    // 5. Send success notification
+    // 7. Send success notification
     sendPasswordResetSuccessEmail(
       user.email,
       userName,
       process.env.CLIENT_URL || 'http://localhost:3000/login'
     ).catch(err => logger.error('Failed to send password reset success email', err));
 
-    // TODO: Invalidate all sessions/tokens (if applicable)
+    // TODO: Invalidate all sessions/tokens
 
     logger.info("Password reset successfully", { userId: user.id });
 
@@ -708,7 +749,7 @@ export const loginNurse = async (
     const { user, nurseProfile } = await checkNurseRecordsExist({ identifier, password }, reqInfo);
 
     if (!nurseProfile) {
-      throw new Error("Nurse profile not found");
+      throw new UnauthorizedError("Invalid Credentials");
     }
 
     // Generate JWT tokens
@@ -798,7 +839,7 @@ export const refreshTokens = async (
     return newTokens;
   } catch (error) {
     logger.error('Error refreshing tokens', error as Error);
-    throw new Error('Session expired or invalid');
+    throw new UnauthorizedError('Session expired or invalid');
   }
 };
 
@@ -820,5 +861,6 @@ export const logout = async (
     logger.info('User logged out', { userId });
   } catch (error) {
     logger.error('Error during logout', error as Error);
+    throw new AppError('Logout failed. Please try again.', 500, ErrorCode.INTERNAL_ERROR);
   }
 };
