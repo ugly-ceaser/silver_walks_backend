@@ -6,7 +6,8 @@
     "type-check": "tsc --noEmit",
     "build": "tsc",
     "vercel-build": "tsc",
-    "db:empty": "ts-node scripts/empty-db.ts"
+    "db:empty": "ts-node scripts/empty-db.ts",
+    "test:auth-errors": "node --require ts-node/register --test --test-concurrency=1 test/integration/auth-errors.integration.test.ts"
   },
   "devDependencies": {
     "@types/argon2": "^0.14.1",
