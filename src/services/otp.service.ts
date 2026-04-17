@@ -90,38 +90,38 @@ export class OtpService {
         }
     }
 
-    /**
-     * Verify an OTP with timing-safe comparison and brute-force protection
-     */
     async verifyOtp(
         email: string,
         submittedOtp: string,
         purpose: OtpPurpose
     ): Promise<boolean> {
         const record = await Otp.findOne({
-            where: {
-                email,
-                purpose,
-                is_used: false,
-                expires_at: {
-                    [Op.gt]: new Date()
-                }
-            },
+            where: { email, purpose },
             order: [['created_at', 'DESC']]
         });
 
         if (!record) {
             // Constant time dummy comparison even if no record found
-            // Use a dummy 6-digit string
             crypto.timingSafeEqual(Buffer.from('000000'), Buffer.from(submittedOtp.padEnd(6).substring(0, 6)));
-            return false;
+            throw new AppError('Invalid OTP', 400, ErrorCode.OTP_INVALID);
+        }
+
+        if (record.is_used) {
+            throw new AppError('OTP has already been used', 400, ErrorCode.OTP_ALREADY_USED);
+        }
+
+        if (record.expires_at < new Date()) {
+            throw new AppError('OTP has expired', 400, ErrorCode.OTP_EXPIRED);
+        }
+
+        if (record.attempt_count >= record.max_attempts) {
+            throw new AppError('Maximum OTP attempts reached', 400, ErrorCode.OTP_MAX_ATTEMPTS_REACHED);
         }
 
         // Increment attempt count
         record.attempt_count += 1;
         
         // Timing-safe comparison
-        // Note: Buffer.from requires same lengths for timingSafeEqual
         const recordOtpBuf = Buffer.from(record.otp);
         const submittedOtpBuf = Buffer.from(submittedOtp.padEnd(record.otp.length).substring(0, record.otp.length));
         
@@ -137,10 +137,12 @@ export class OtpService {
         if (record.attempt_count >= record.max_attempts) {
             record.is_used = true;
             logger.warn('OTP burned due to max attempts reached', { email, purpose });
+            await record.save();
+            throw new AppError('Maximum OTP attempts reached', 400, ErrorCode.OTP_MAX_ATTEMPTS_REACHED);
         }
 
         await record.save();
-        return false;
+        throw new AppError('Invalid OTP', 400, ErrorCode.OTP_INVALID);
     }
 
     /**
