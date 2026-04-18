@@ -1,12 +1,38 @@
 import { Response } from 'express';
 import { logger } from './logger.util';
 
+
+// The agreed contract shape
+export interface ErrorResponseBody {
+  success: false;
+  error: {
+    code: ErrorCode;
+    message: string;
+    field?: string;       // which form field caused the error (optional)
+    details?: any;        // extra info e.g. validation breakdown (optional)
+  };
+}
+
+// Error Response Options
+export interface ErrorResponseOptions {
+  res: Response;
+  statusCode: number;
+  code: ErrorCode;
+  message: string;
+  field?: string;
+  details?: any;
+}
+
 export enum ErrorCode {
   // Authentication & Authorization
   UNAUTHORIZED = 'UNAUTHORIZED',
   FORBIDDEN = 'FORBIDDEN',
   TOKEN_EXPIRED = 'TOKEN_EXPIRED',
   INVALID_TOKEN = 'INVALID_TOKEN',
+  INVALID_CREDENTIALS = 'INVALID_CREDENTIALS',
+  ACCOUNT_PENDING = 'ACCOUNT_PENDING',
+  ACCOUNT_DEACTIVATED = 'ACCOUNT_DEACTIVATED',
+  EMAIL_NOT_VERIFIED = 'EMAIL_NOT_VERIFIED',
   
   // Registration Flow
   EMAIL_ALREADY_EXISTS = 'EMAIL_ALREADY_EXISTS',
@@ -44,6 +70,13 @@ export enum ErrorCode {
   INVALID_STATUS_TRANSITION = 'INVALID_STATUS_TRANSITION',
   NURSE_NOT_AVAILABLE = 'NURSE_NOT_AVAILABLE',
   WALK_ALREADY_SCHEDULED = 'WALK_ALREADY_SCHEDULED',
+
+  // Under Password Reset
+  RESET_TOKEN_EXPIRED = 'RESET_TOKEN_EXPIRED',
+  RESET_TOKEN_INVALID = 'RESET_TOKEN_INVALID',
+  PASSWORD_TOO_WEAK = 'PASSWORD_TOO_WEAK',
+  PASSWORD_SAME_AS_OLD = 'PASSWORD_SAME_AS_OLD',
+  
 }
 
 export class AppError extends Error {
@@ -102,24 +135,13 @@ export class ConflictError extends AppError {
 /**
  * Send error response
  */
-export const sendErrorResponse = (
-  res: Response,
-  statusCode: number,
-  code: ErrorCode,
-  message: string,
-  details?: any
-): void => {
-  const response: any = {
+export const sendErrorResponse = ({
+  res, statusCode, code, message,field, details
+}: ErrorResponseOptions): void => {
+  const response: ErrorResponseBody = {   // ← typed now
     success: false,
-    error: {
-      code,
-      message,
-    },
+    error: { code, message, field, details },
   };
-
-  if (details) {
-    response.error.details = details;
-  }
 
   res.status(statusCode).json(response);
 };
@@ -128,31 +150,16 @@ export const sendErrorResponse = (
  * Handle and send error response
  */
 export const handleError = (err: Error | AppError, res: Response): void => {
-  if (err instanceof AppError) {
-    if (err.isOperational) {
-      sendErrorResponse(res, err.statusCode, err.code, err.message, err.details);
-    } else {
-      logger.error('Non-operational error', err);
-      sendErrorResponse(
-        res,
-        500,
-        ErrorCode.INTERNAL_ERROR,
-        'An unexpected error occurred'
-      );
-    }
-  } else {
+  if (err instanceof AppError &&  err.isOperational) {
+    sendErrorResponse({ res, statusCode: err.statusCode, code: err.code, message: err.message, details: err.details });
+  }else {
     logger.error('Unexpected error', err);
-    sendErrorResponse(
-      res,
-      500,
-      ErrorCode.INTERNAL_ERROR,
-      'An unexpected error occurred'
-    );
+    sendErrorResponse({ res, statusCode:500, code: ErrorCode.INTERNAL_ERROR, message: 'An unexpected error occurred'});
   }
 };
 
 /**
- * Handle async errors
+ * Handle async errors  
  */
 export const asyncHandler = (fn: Function) => {
   return (req: any, res: any, next: any) => {

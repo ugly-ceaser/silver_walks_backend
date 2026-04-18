@@ -23,10 +23,14 @@ const sequelize = config.database.url
       freezeTableName: true,
     },
     dialectOptions: {
-      ssl: config.env === 'production' ? {
+      // ssl: config.env === 'production' ? {
+      //   require: true,
+      //   rejectUnauthorized: false,
+      // } : false,
+      ssl: {
         require: true,
-        rejectUnauthorized: false,
-      } : false,
+        rejectUnauthorized: false
+      },
     },
   })
   : new Sequelize(

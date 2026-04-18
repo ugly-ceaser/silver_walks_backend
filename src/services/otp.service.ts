@@ -160,6 +160,53 @@ export class OtpService {
         logger.info('OTP cleanup completed', { deletedCount: deleted });
         return deleted;
     }
+
+
+    async verifyOtpWithReason(
+        email: string,
+        submittedOtp: string,
+        purpose: OtpPurpose
+        ): Promise<{ valid: boolean; reason?: 'expired' | 'invalid' | 'max_attempts' }> {
+        
+        // First check if an expired record exists
+        const expiredRecord = await Otp.findOne({
+            where: { email, purpose, is_used: false, expires_at: { [Op.lte]: new Date() } },
+            order: [['created_at', 'DESC']]
+        });
+
+        // Check for a valid (non-expired) record
+        const record = await Otp.findOne({
+            where: { email, purpose, is_used: false, expires_at: { [Op.gt]: new Date() } },
+            order: [['created_at', 'DESC']]
+        });
+
+        if (!record) {
+            crypto.timingSafeEqual(Buffer.from('000000'), Buffer.from(submittedOtp.padEnd(6).substring(0, 6)));
+            return { valid: false, reason: expiredRecord ? 'expired' : 'invalid' };
+        }
+
+        record.attempt_count += 1;
+
+        const recordOtpBuf = Buffer.from(record.otp);
+        const submittedOtpBuf = Buffer.from(submittedOtp.padEnd(record.otp.length).substring(0, record.otp.length));
+        const isMatch = crypto.timingSafeEqual(recordOtpBuf, submittedOtpBuf);
+
+        if (isMatch) {
+            record.is_used = true;
+            await record.save();
+            return { valid: true };
+        }
+
+        if (record.attempt_count >= record.max_attempts) {
+            record.is_used = true;
+            logger.warn('OTP burned due to max attempts reached', { email, purpose });
+            await record.save();
+            return { valid: false, reason: 'max_attempts' };
+        }
+
+        await record.save();
+        return { valid: false, reason: 'invalid' };
+    }
 }
 
 export const otpService = new OtpService();
