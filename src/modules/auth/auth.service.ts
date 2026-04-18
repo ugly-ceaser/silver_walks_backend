@@ -22,6 +22,7 @@ interface RegisterElderlyUserData {
   age: number;
   phone: string;
   email?: string;
+  password?: string;
   homeAddress: string;
   emergencyContactName: string;
   emergencyContactRelationship: string;
@@ -36,6 +37,7 @@ interface RegisterElderlyUserData {
 interface RegisterNurseData {
   fullName: string;
   email: string;
+  password?: string;
   phone: string;
   gender: string;
   yearsOfExperience: number;
@@ -146,7 +148,7 @@ const createElderlyRecords = async (data: RegisterElderlyUserData, t: any) => {
   } = data;
 
   // Generate temporary password and hash it
-  const tempPassword = "SilverWalks123#"; //crypto.randomBytes(8).toString('hex'); // Generate random temp password
+  const tempPassword = data.password || "SilverWalks123#"; // Generated or provided temp password
   const hashedPassword = await hashPassword(tempPassword);
   //  User Record
   const user = await authRepository.createUser(
@@ -364,7 +366,7 @@ export const registerElderlyUser = async (
   logger.info("Starting elderly user registration", { email: data.email, phone: data.phone });
 
   try {
-    // 1. Check if user already exists
+    // 1. Check if user already exists by email
     const existingUser = await authRepository.findUserByEmail(data.email || generateFallbackEmail(data.phone));
 
     if (existingUser) {
@@ -398,9 +400,14 @@ export const registerElderlyUser = async (
         };
       } else {
         logger.warn("Registration attempt for already verified user", { email: existingUser.email });
-        throw new ConflictError("An account with this email already exists.");
-        
+        throw new AppError("An account with this email is already registered and verified. Please login instead.", 409, ErrorCode.EMAIL_ALREADY_EXISTS);
       }
+    }
+
+    // Check if phone already exists
+    const existingPhone = await authRepository.findElderlyProfileByPhone(data.phone);
+    if (existingPhone) {
+      throw new AppError("An account with this phone number is already registered.", 409, ErrorCode.PHONE_ALREADY_EXISTS);
     }
 
     // 2. If user doesn't exist, proceed with creation
@@ -491,11 +498,7 @@ export const verifyEmailWithOtp = async (
 
   try {
     // 1. Verify OTP
-    const isValid = await otpService.verifyOtp(email, otp, OtpPurpose.EMAIL_VERIFICATION);
-
-    if (!isValid) {
-      throw new Error("Invalid or expired OTP");
-    }
+    await otpService.verifyOtp(email, otp, OtpPurpose.EMAIL_VERIFICATION);
 
     // 2. Mark user as verified
     const user = await authRepository.findUserByEmail(email);
@@ -654,9 +657,22 @@ export const registerNurse = async (
   logger.info("Starting nurse registration", { email: data.email });
 
   try {
+    // 1. Check if user already exists
+    const existingUser = await authRepository.findUserByEmail(data.email);
+    if (existingUser) {
+      throw new AppError("An account with this email is already registered.", 409, ErrorCode.EMAIL_ALREADY_EXISTS);
+    }
+
+    // Check if phone already exists
+    const existingPhone = await authRepository.findNurseProfileByPhone(data.phone);
+    if (existingPhone) {
+      throw new AppError("An account with this phone number is already registered.", 409, ErrorCode.PHONE_ALREADY_EXISTS);
+    }
+
     const result = await sequelize.transaction(async (t) => {
       // 1. Create User
-      const hashedPassword = await hashPassword("SilverWalks123#"); // Default password for now
+      const passwordToUse = data.password || "SilverWalks123#";
+      const hashedPassword = await hashPassword(passwordToUse); // Default password for now
       const user = await authRepository.createUser(
         {
           email: data.email,
