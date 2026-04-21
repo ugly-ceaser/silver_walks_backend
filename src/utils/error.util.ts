@@ -150,8 +150,13 @@ export const sendErrorResponse = ({
  * Handle and send error response
  */
 export const handleError = (err: Error | AppError, res: Response): void => {
-  if (err instanceof AppError &&  err.isOperational) {
-    sendErrorResponse({ res, statusCode: err.statusCode, code: err.code, message: err.message, details: err.details });
+  if (err instanceof AppError) {
+    if (err.isOperational){
+      sendErrorResponse({ res, statusCode: err.statusCode, code: err.code, message: err.message, details: err.details });
+    } else {
+      logger.error('Unexpected error', err);
+      sendErrorResponse({ res, statusCode:500, code: ErrorCode.INTERNAL_ERROR, message: 'An unexpected error occurred'});
+    }
   }else {
     logger.error('Unexpected error', err);
     sendErrorResponse({ res, statusCode:500, code: ErrorCode.INTERNAL_ERROR, message: 'An unexpected error occurred'});
