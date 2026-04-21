@@ -151,9 +151,9 @@ export const sendErrorResponse = ({
  */
 export const handleError = (err: Error | AppError, res: Response): void => {
   if (err instanceof AppError) {
-    if (err.isOperational) {
-    sendErrorResponse({ res, statusCode: err.statusCode, code: err.code, message: err.message, details: err.details });
-    }else {
+    if (err.isOperational){
+      sendErrorResponse({ res, statusCode: err.statusCode, code: err.code, message: err.message, details: err.details });
+    } else {
       logger.error('Unexpected error', err);
       sendErrorResponse({ res, statusCode:500, code: ErrorCode.INTERNAL_ERROR, message: 'An unexpected error occurred'});
     }
