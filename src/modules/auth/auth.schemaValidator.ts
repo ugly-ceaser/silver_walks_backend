@@ -1,6 +1,7 @@
 import Joi from 'joi';
 import { Request, Response, NextFunction } from 'express';
 import { validationErrorResponse } from '../../utils/response.util';
+import { AppError, ErrorCode } from '../../utils/error.util';
 
 // sanitizers (place near top of file)
 const stripHtmlAndControlChars = (value: string) => {
@@ -159,6 +160,23 @@ export const registerElderlySchema = Joi.object({
     .messages({
       'string.empty': 'Mobility level is optional',
     }),
+    
+  password: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .min(8)
+    .max(128)
+    .trim()
+    .pattern(/(?=.*[a-z])/, 'lowercase')
+    .pattern(/(?=.*[A-Z])/, 'uppercase')
+    .pattern(/(?=.*\d)/, 'number')
+    .pattern(/(?=.*[^\w\s])/, 'special')
+    .optional()
+    .messages({
+      'string.empty': 'Password must not be empty',
+      'string.min': 'Password must be at least 8 characters long',
+      'string.max': 'Password must not exceed 128 characters',
+      'string.pattern.name': 'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+    }),
 });
 
 
@@ -230,6 +248,16 @@ export const validateElderlyRegistration = (
   });
 
   if (error) {
+    const isPhoneError = error.details.some(d => d.path.includes('phone') && d.type === 'string.pattern.base');
+    if (isPhoneError) {
+      return next(new AppError('Invalid phone number format', 400, ErrorCode.INVALID_PHONE_FORMAT));
+    }
+    
+    const isPasswordError = error.details.some(d => d.path.includes('password') && (d.type.startsWith('string.pattern') || d.type === 'string.min'));
+    if (isPasswordError) {
+      return next(new AppError('Password fails complexity requirements', 400, ErrorCode.WEAK_PASSWORD));
+    }
+
     const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
       field: detail.path.join('.'),
       message: detail.message,
@@ -403,7 +431,23 @@ export const registerNurseSchema = Joi.object({
     dayOfWeek: Joi.number().integer().min(0).max(6).required(),
     startTime: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).required(),
     endTime: Joi.string().pattern(/^([01]\d|2[0-3]):?([0-5]\d)$/).required()
-  })).min(1).required()
+  })).min(1).required(),
+  
+  password: Joi.string()
+    .custom(sanitize, 'sanitize input')
+    .min(8)
+    .max(128)
+    .trim()
+    .pattern(/(?=.*[a-z])/, 'lowercase')
+    .pattern(/(?=.*[A-Z])/, 'uppercase')
+    .pattern(/(?=.*\d)/, 'number')
+    .pattern(/(?=.*[^\w\s])/, 'special')
+    .optional()
+    .messages({
+      'string.empty': 'Password must not be empty',
+      'string.min': 'Password must be at least 8 characters long',
+      'string.pattern.name': 'Password must contain at least one lowercase letter, one uppercase letter, one number, and one special character',
+    })
 });
 
 /**
@@ -420,6 +464,16 @@ export const validateNurseRegistration = (
   });
 
   if (error) {
+    const isPhoneError = error.details.some(d => d.path.includes('phone') && d.type === 'string.pattern.base');
+    if (isPhoneError) {
+      return next(new AppError('Invalid phone number format', 400, ErrorCode.INVALID_PHONE_FORMAT));
+    }
+    
+    const isPasswordError = error.details.some(d => d.path.includes('password') && (d.type.startsWith('string.pattern') || d.type === 'string.min'));
+    if (isPasswordError) {
+      return next(new AppError('Password fails complexity requirements', 400, ErrorCode.WEAK_PASSWORD));
+    }
+
     const errors = error.details.map((detail: Joi.ValidationErrorItem) => ({
       field: detail.path.join('.'),
       message: detail.message,
